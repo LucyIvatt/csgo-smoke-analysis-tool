@@ -130,3 +130,6 @@ dmypy.json
 
 # Chrome Driver
 chromedriver.exe
+
+# Parsed Demos
+*.json

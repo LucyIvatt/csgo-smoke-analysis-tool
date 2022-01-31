@@ -1,8 +1,7 @@
 from csgo.parser import DemoParser
+from constants import DEMO_DIR
 
 # https://github.com/pnxenopoulos/csgo#setup
-
-DEMO_DIR = "D:\\Libraries\\Onedrive\\University\\4 - Third Year\\1 - PRBX\\Code and Tools\\Demo Parsing\\Demos"
 
 
 # Set parse_rate to a power of 2 between 2^0 and 2^7. It indicates the spacing between parsed ticks. Larger numbers result in fewer frames recorded. 128 indicates a frame per second on professional game demos.
