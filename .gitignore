@@ -133,3 +133,6 @@ chromedriver.exe
 
 # Parsed Demos
 *.json
+
+# Config file
+config.ini

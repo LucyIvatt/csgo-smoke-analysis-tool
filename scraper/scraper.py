@@ -1,7 +1,12 @@
 from selenium import webdriver
 import os
 import time
-from constants import DEMO_DIR
+from configparser import ConfigParser
+
+# Read config.ini file
+config = ConfigParser()
+config.read("config.ini")
+demo_dir = config["Locations"]["demo_dir"]
 
 
 def get_match_urls(event_url):
@@ -32,7 +37,7 @@ def write_links_to_file(filename, event_name, result_links):
 
 
 def download_demo(event_name, result_page):
-    dl_path = DEMO_DIR + "\\" + event_name
+    dl_path = demo_dir + "\\" + event_name
     if not os.path.exists(dl_path):
         os.makedirs(dl_path)
 
@@ -66,5 +71,5 @@ def download_event_demos(event_url):
 
 # name, results = get_match_urls(HLTV_URL)
 # write_links_to_file("test", name, results)
-download_demo("BLAST Premier Spring Groups 2022",
-              "https://www.hltv.org/matches/2353976/mibr-vs-astralis-blast-premier-spring-groups-2022")
+# download_demo("BLAST Premier Spring Groups 2022",
+        #   "https://www.hltv.org/matches/2353976/mibr-vs-astralis-blast-premier-spring-groups-2022")

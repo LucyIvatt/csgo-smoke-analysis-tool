@@ -1,11 +1,16 @@
 from csgo.parser import DemoParser
-from constants import DEMO_DIR
+from configparser import ConfigParser
+
+# Read config.ini file
+config = ConfigParser()
+config.read("config.ini")
+demo_dir = config["Locations"]["demo_dir"]
 
 # https://github.com/pnxenopoulos/csgo#setup
 
 
 # Set parse_rate to a power of 2 between 2^0 and 2^7. It indicates the spacing between parsed ticks. Larger numbers result in fewer frames recorded. 128 indicates a frame per second on professional game demos.
-demo_parser = DemoParser(demofile=DEMO_DIR + "\\g2-vs-nip-inferno.dem",
+demo_parser = DemoParser(demofile=demo_dir + "\\g2-vs-nip-inferno.dem",
                          demo_id="g2-vs-nip-inferno", parse_rate=128)
 
 
