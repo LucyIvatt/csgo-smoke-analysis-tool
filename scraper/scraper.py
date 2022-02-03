@@ -6,25 +6,34 @@ from configparser import ConfigParser
 
 HLTV_BASE_URL = "https://www.hltv.org/"
 
-# Read config.ini file
+# Reads config file to find directory of demo files
 config = ConfigParser()
 config.read("config.ini")
 demo_dir = config["Locations"]["demo_dir"]
 
 
 def init_driver():
+    '''
+    Initializes and returns web driver object with logging messages hidden.
+    '''
     options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     return webdriver.Chrome(options=options)
 
 
 def find_event_results_url(event_name):
+    '''
+    Returns the HLTV URL containing all match results for a given event.
+    '''
     driver = init_driver()
     driver.get(HLTV_BASE_URL)
 
+    # Expands burger menu to show search bar
     burger = driver.find_element_by_xpath(
         "//div[@class='navburger navburger2']")
     burger.click()
+
+    # Searches for the event name & navigates to link provided by search results
     search_bar = driver.find_element_by_css_selector(
         "input[placeholder='Search...']")
     search_bar.send_keys(event_name)
@@ -33,14 +42,14 @@ def find_event_results_url(event_name):
         "//div[@class='box eventsearch expanded hoverable']/div/a")
     driver.get(event_link.get_attribute("href"))
 
+    # finds results button on the event page and returns the URL associated with it
     results_page = driver.find_element_by_xpath(
         "//div[@class='event-hub-bottom']/a[contains(text(), 'Results')]")
     return results_page.get_attribute("href")
 
 
 def get_match_urls(event_url):
-    driver = webdriver.Chrome()
-    driver.get(event_url)
+    driver = init_driver()
 
     event_name = driver.find_element_by_xpath(
         "//div[contains(@class, 'event-hub-title')]").text()
