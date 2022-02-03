@@ -2,14 +2,17 @@ from selenium import webdriver
 import os
 import time
 from configparser import ConfigParser
+import logging
 
 HLTV_BASE_URL = "https://www.hltv.org/"
 
 # Reads config file to find directory of demo files
 config = ConfigParser()
 config.read("config.ini")
-demo_dir = config["Locations"]["demo_dir"]
+demo_dir = config["Data Set"]["demo_directory"]
 demo_id_file = demo_dir + "\\matchids" + ".txt"
+logging.basicConfig(level=logging.INFO, filename='scraper.log',
+                    filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 
 def init_driver(download_path=demo_dir):
@@ -23,9 +26,9 @@ def init_driver(download_path=demo_dir):
     return webdriver.Chrome(options=options)
 
 
-def find_event_results_url(event_name):
+def find_event_results_page_url(event_name):
     '''
-    Returns the HLTV URL containing all match results for a given event.
+    Returns the HLTV URL containing the list of match results for a given event.
     '''
     driver = init_driver()
     driver.get(HLTV_BASE_URL)
@@ -50,11 +53,13 @@ def find_event_results_url(event_name):
     results_url = results_page.get_attribute("href")
 
     driver.quit()
+    logging.info('Found event results page url for event ',
+                 event_name, " - ", results_url)
 
     return results_url
 
 
-def get_match_urls(event_results_url):
+def get_match_urls(event_name, event_results_url):
     '''
     Returns the all HLTV match URLs found on an events results page.
     '''
@@ -64,10 +69,20 @@ def get_match_urls(event_results_url):
     # appends the link for each result to the list results_list
     results = driver.find_elements_by_xpath("//div[@class='result-con ']/a")
     results_list = []
-    for p in range(len(results)):
-        results_list.append(results[p].get_attribute("href"))
+    logging.info("Finding all match result URLS for " + event_name + "...")
+    for match in results:
+        team_one = match.find_element_by_xpath(
+            ".//div/table/tbody/tr/td/div[@class='line-align team1']/div").text
+        team_two = match.find_element_by_xpath(
+            ".//div/table/tbody/tr/td/div[@class='line-align team2']/div").text
+        match_url = match.get_attribute("href")
+        results_list.append(match_url)
+
+        logging.info("Found match page URL for: " + team_one +
+                     " Vs " + team_two + " - " + match_url)
 
     driver.quit()
+    logging.info("All matches found for " + event_name)
 
     return results_list
 
@@ -85,7 +100,7 @@ def download_demo(event_name, match_page):
     '''
     Downloads a demo file from a match page into the demo directory inside a folder named after the event.
 
-    Prevents duplicate download if demo id is already stored in the demo id file. 
+    Prevents duplicate download if demo id is already stored in the demo id file.
     '''
     # Checks if a folder for the event already exists, otherwise creates one
     dl_path = demo_dir + "\\" + event_name
@@ -119,3 +134,7 @@ def download_wait(path_to_downloads):
         for file in os.listdir(path_to_downloads):
             if file.endswith('.crdownload'):
                 wait = True
+
+
+get_match_urls("ESEA Winter 2021 Cash Cup 3 North America",
+               "https://www.hltv.org/results?event=6364")
