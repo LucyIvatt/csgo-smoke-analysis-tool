@@ -1,12 +1,41 @@
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 import os
 import time
 from configparser import ConfigParser
+
+HLTV_BASE_URL = "https://www.hltv.org/"
 
 # Read config.ini file
 config = ConfigParser()
 config.read("config.ini")
 demo_dir = config["Locations"]["demo_dir"]
+
+
+def init_driver():
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    return webdriver.Chrome(options=options)
+
+
+def find_event_results_url(event_name):
+    driver = init_driver()
+    driver.get(HLTV_BASE_URL)
+
+    burger = driver.find_element_by_xpath(
+        "//div[@class='navburger navburger2']")
+    burger.click()
+    search_bar = driver.find_element_by_css_selector(
+        "input[placeholder='Search...']")
+    search_bar.send_keys(event_name)
+    time.sleep(2)
+    event_link = driver.find_element_by_xpath(
+        "//div[@class='box eventsearch expanded hoverable']/div/a")
+    driver.get(event_link.get_attribute("href"))
+
+    results_page = driver.find_element_by_xpath(
+        "//div[@class='event-hub-bottom']/a[contains(text(), 'Results')]")
+    return results_page.get_attribute("href")
 
 
 def get_match_urls(event_url):
@@ -69,7 +98,4 @@ def download_event_demos(event_url):
         download_demo(event_name, match)
 
 
-# name, results = get_match_urls(HLTV_URL)
-# write_links_to_file("test", name, results)
-# download_demo("BLAST Premier Spring Groups 2022",
-        #   "https://www.hltv.org/matches/2353976/mibr-vs-astralis-blast-premier-spring-groups-2022")
+print(find_event_results_url("Blast Premier Spring Groups 2022"))
