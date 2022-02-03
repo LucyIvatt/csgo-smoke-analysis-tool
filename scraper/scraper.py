@@ -1,5 +1,4 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 import os
 import time
 from configparser import ConfigParser
@@ -10,14 +9,17 @@ HLTV_BASE_URL = "https://www.hltv.org/"
 config = ConfigParser()
 config.read("config.ini")
 demo_dir = config["Locations"]["demo_dir"]
+demo_id_file = demo_dir + "\\matchids" + ".txt"
 
 
-def init_driver():
+def init_driver(download_path=demo_dir):
     '''
     Initializes and returns web driver object with logging messages hidden.
     '''
     options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_experimental_option(
+        'prefs', {'download.default_directory': download_path})
     return webdriver.Chrome(options=options)
 
 
@@ -45,66 +47,75 @@ def find_event_results_url(event_name):
     # finds results button on the event page and returns the URL associated with it
     results_page = driver.find_element_by_xpath(
         "//div[@class='event-hub-bottom']/a[contains(text(), 'Results')]")
-    return results_page.get_attribute("href")
+    results_url = results_page.get_attribute("href")
+
+    driver.quit()
+
+    return results_url
 
 
-def get_match_urls(event_url):
+def get_match_urls(event_results_url):
+    '''
+    Returns the all HLTV match URLs found on an events results page.
+    '''
     driver = init_driver()
+    driver.get(event_results_url)
 
-    event_name = driver.find_element_by_xpath(
-        "//div[contains(@class, 'event-hub-title')]").text()
-
+    # appends the link for each result to the list results_list
     results = driver.find_elements_by_xpath("//div[@class='result-con ']/a")
-
     results_list = []
     for p in range(len(results)):
         results_list.append(results[p].get_attribute("href"))
 
     driver.quit()
-    return (event_name, results_list)
+
+    return results_list
 
 
-def write_links_to_file(filename, event_name, result_links):
-    file = open(filename + ".txt", "w")
-    file.write(event_name.upper() + ":" + "\n\n")
-
-    for link in result_links:
-        file.write(link + "\n")
-
+def write_demo_id_to_file(match_id):
+    '''
+    Appends a demo id to the demo id file stored in the root of the demo directory.
+    '''
+    file = open(demo_id_file, "a")
+    file.write(match_id + "\n")
     file.close()
 
 
-def download_demo(event_name, result_page):
+def download_demo(event_name, match_page):
+    '''
+    Downloads a demo file from a match page into the demo directory inside a folder named after the event.
+
+    Prevents duplicate download if demo id is already stored in the demo id file. 
+    '''
+    # Checks if a folder for the event already exists, otherwise creates one
     dl_path = demo_dir + "\\" + event_name
     if not os.path.exists(dl_path):
         os.makedirs(dl_path)
 
-    chrome_options = webdriver.ChromeOptions()
-    prefs = {'download.default_directory': dl_path}
-    chrome_options.add_experimental_option('prefs', prefs)
-    driver = webdriver.Chrome(chrome_options=chrome_options)
+    driver = init_driver(dl_path)
+    driver.get(match_page)
 
-    driver.get(result_page)
+    # Finds the download demo button and extracts demo ID from URL
     demo_button = driver.find_element_by_xpath("//*[text() = 'GOTV Demo']")
-    demo_button.click()
-    download_wait(dl_path)
+    demo_link = demo_button.get_attribute("href").split("/")
+    demo_id = demo_link[-1]
+
+    with open(demo_id_file) as file:
+        # If not a duplicate download, downloads the file and writes ID to demo id file
+        if demo_id not in file.read():
+            demo_button.click()
+            download_wait(dl_path)
+            write_demo_id_to_file(demo_id)
 
 
 def download_wait(path_to_downloads):
-    dl_wait = True
-    while dl_wait:
+    '''
+    Waits until the demo download has finished by checking for when the chrome temporary download file is removed from the directory.
+    '''
+    wait = True
+    while wait:
         time.sleep(1)
-        dl_wait = False
-        for fname in os.listdir(path_to_downloads):
-            print(fname)
-            if fname.endswith('.crdownload'):
-                dl_wait = True
-
-
-def download_event_demos(event_url):
-    event_name, match_urls = get_match_urls(event_url)
-    for match in match_urls:
-        download_demo(event_name, match)
-
-
-print(find_event_results_url("Blast Premier Spring Groups 2022"))
+        wait = False
+        for file in os.listdir(path_to_downloads):
+            if file.endswith('.crdownload'):
+                wait = True
