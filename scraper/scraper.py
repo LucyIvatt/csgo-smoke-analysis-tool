@@ -19,6 +19,7 @@ def init_driver(download_path=demo_dir):
     '''
     Initializes and returns web driver object with logging messages hidden.
     '''
+    logging.info("Initializing Chrome Web Driver...")
     options = webdriver.ChromeOptions()
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_experimental_option(
@@ -43,8 +44,13 @@ def find_event_results_page_url(event_name):
         "input[placeholder='Search...']")
     search_bar.send_keys(event_name)
     time.sleep(2)
-    event_link = driver.find_element_by_xpath(
-        "//div[@class='box eventsearch expanded hoverable']/div/a")
+    try:
+        event_link = driver.find_element_by_xpath(
+            "//div[@class='box eventsearch expanded hoverable']/div/a")
+    except:
+        event_link = driver.find_element_by_xpath(
+            "//div[@class='box compact eventsearch hoverable']/a")
+
     driver.get(event_link.get_attribute("href"))
 
     # finds results button on the event page and returns the URL associated with it
@@ -53,8 +59,8 @@ def find_event_results_page_url(event_name):
     results_url = results_page.get_attribute("href")
 
     driver.quit()
-    logging.info('Found event results page url for event ',
-                 event_name, " - ", results_url)
+    logging.info('Found event results page url for event ' +
+                 event_name + " - " + results_url)
 
     return results_url
 
@@ -75,28 +81,31 @@ def get_match_urls(event_name, event_results_url):
             ".//div/table/tbody/tr/td/div[@class='line-align team1']/div").text
         team_two = match.find_element_by_xpath(
             ".//div/table/tbody/tr/td/div[@class='line-align team2']/div").text
+        vs_string = team_one + " vs " + team_two
         match_url = match.get_attribute("href")
-        results_list.append(match_url)
+        results_list.append((match_url, vs_string))
 
-        logging.info("Found match page URL for: " + team_one +
-                     " Vs " + team_two + " - " + match_url)
+        logging.info("Found match page URL for: " +
+                     vs_string + " - " + match_url)
 
     driver.quit()
-    logging.info("All matches found for " + event_name)
+    logging.info("All matches found for " + event_name +
+                 " - Number of matches found: " + str(len(results)))
 
     return results_list
 
 
-def write_demo_id_to_file(match_id):
+def write_demo_id_to_file(demo_id):
     '''
     Appends a demo id to the demo id file stored in the root of the demo directory.
     '''
     file = open(demo_id_file, "a")
-    file.write(match_id + "\n")
+    file.write(demo_id + "\n")
     file.close()
+    logging.info("Wrote demo ID: " + demo_id + " to " + demo_id_file)
 
 
-def download_demo(event_name, match_page):
+def download_demo(event_name, match_page, vs_string):
     '''
     Downloads a demo file from a match page into the demo directory inside a folder named after the event.
 
@@ -106,6 +115,11 @@ def download_demo(event_name, match_page):
     dl_path = demo_dir + "\\" + event_name
     if not os.path.exists(dl_path):
         os.makedirs(dl_path)
+        logging.info("Folder for event - " + event_name +
+                     " - not found, creating folder...")
+    else:
+        logging.info("Folder for event - " + event_name +
+                     " - found.")
 
     driver = init_driver(dl_path)
     driver.get(match_page)
@@ -119,8 +133,13 @@ def download_demo(event_name, match_page):
         # If not a duplicate download, downloads the file and writes ID to demo id file
         if demo_id not in file.read():
             demo_button.click()
+            logging.info("Downloading demo ID " +
+                         demo_id + " - " + vs_string + "...")
             download_wait(dl_path)
             write_demo_id_to_file(demo_id)
+        else:
+            logging.info("Event ID " + demo_id + "already found in " +
+                         demo_id_file + ". Skipping...")
 
 
 def download_wait(path_to_downloads):
@@ -134,7 +153,4 @@ def download_wait(path_to_downloads):
         for file in os.listdir(path_to_downloads):
             if file.endswith('.crdownload'):
                 wait = True
-
-
-get_match_urls("ESEA Winter 2021 Cash Cup 3 North America",
-               "https://www.hltv.org/results?event=6364")
+    logging.info("Download finished")

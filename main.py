@@ -24,9 +24,12 @@ def init_dataset():
 
     event_results_page_url = find_event_results_page_url(event_name)
 
-    match_urls = get_match_urls(event_results_page_url)
-    # for match in match_urls:
-    #     download_demo(event_name, match)
+    match_urls = get_match_urls(
+        event_name=event_name, event_results_url=event_results_page_url)
+
+    for match in match_urls:
+        download_demo(event_name=event_name,
+                      match_page=match[0], vs_string=match[1])
 
 
 init_config()
