@@ -4,6 +4,7 @@ from awpy.visualization.plot import plot_map, position_transform
 from awpy.data import MAP_DATA
 from configparser import ConfigParser
 import json
+import os.path
 
 SMOKE_DIAMETER_UNITS = 288
 
@@ -14,7 +15,8 @@ demo_dir = config["Data Set"]["demo_directory"]
 
 
 def plot_all_smokes(rounds, map_name, map_type="simpleradar", dark=True):
-    f, a = plot_map(map_name=map_name, map_type=map_type, dark=dark)
+    fig, a = plot_map(map_name=map_name, map_type=map_type, dark=dark)
+    fig.set_size_inches(18.5, 10.5)
     smoke_diameter_scaled = SMOKE_DIAMETER_UNITS / MAP_DATA[map_name]["scale"]
     for r in rounds:
         if r["grenades"]:
@@ -23,18 +25,28 @@ def plot_all_smokes(rounds, map_name, map_type="simpleradar", dark=True):
                 end_y = position_transform(map_name, g["grenadeY"], "y")
                 if g["grenadeType"] == "Smoke Grenade":
                     smoke_circle = plt.Circle(
-                        (end_x, end_y), smoke_diameter_scaled / 2, alpha=0.1, color="blue")
+                        (end_x, end_y), smoke_diameter_scaled / 2, alpha=0.1, color="white")
                     a.add_artist(smoke_circle)
-    return f
+    plt.show()
+    return fig
 
 
 def draw_introduction_figures():
-    pass
-    # overpass_game = DemoParser.read_json(
-    #     demo_dir + "misc\\introduction_demos\\")
+    parser = DemoParser()
+    inf_game = parser.read_json(
+        json_path=demo_dir + "\\misc\\introduction_demos\\natus-vincere-vs-g2-m1-inferno.json")
+    mirage_game = parser.read_json(
+        json_path=demo_dir + "\\misc\\introduction_demos\\natus-vincere-vs-g2-m2-mirage.json")
+
+    inf_diagram = plot_all_smokes(inf_game["gameRounds"], "de_inferno")
+    inf_diagram.savefig(config["Outputs"]["image_save_location"] +
+                        '\\inferno_smoke_map.png', dpi=100)
+    mir_diagram = plot_all_smokes(mirage_game["gameRounds"], "de_mirage")
+    mir_diagram.savefig(config["Outputs"]["image_save_location"] +
+                        '\\mirage_smoke_map.png', dpi=100)
 
 
-def draw_doorways():
+def draw_doorway_image():
     entrances_file = open("de_mirage_entrances.json")
     entrances_data = json.load(entrances_file)
     fig, a = plot_map(map_name="de_mirage", map_type="simpleradar")
@@ -53,10 +65,4 @@ def draw_doorways():
     plt.show()
 
 
-# location = demo_dir + "\\misc\\introduction_demos\\"
-# demo_parser_1 = DemoParser(
-#     demofile=location + "natus-vincere-vs-g2-m1-inferno.dem", outpath=location)
-# demo_parser_2 = DemoParser(
-#     demofile=location + "natus-vincere-vs-g2-m2-mirage.dem", outpath=location)
-# demo1, demo2 = demo_parser_1.parse_demo(), demo_parser_2.parse_demo()
-draw_doorways()
+draw_introduction_figures()
