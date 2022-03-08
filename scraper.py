@@ -11,7 +11,7 @@ config = ConfigParser()
 config.read("config.ini")
 demo_dir = config["Data Set"]["demo_directory"]
 demo_id_file = demo_dir + "\\matchids" + ".txt"
-logging.basicConfig(level=logging.INFO, filename='scraper.log',
+logging.basicConfig(level=logging.INFO, filename='logs//scraper.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 

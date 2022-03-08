@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 import os
 
-from scraper.scraper import download_demo, find_event_results_page_url, get_match_urls
+from scraper import download_demo, find_event_results_page_url, get_match_urls
 
 # Get the configparser object
 config = ConfigParser()
@@ -10,7 +10,7 @@ config = ConfigParser()
 def init_config():
     if not os.path.isfile('config.ini'):
         config["Data Set"] = {
-            "demo_directory": "D:\\Libraries\\Onedrive\\University\\4 - Third Year\\1 - PRBX\\Demos",
+            "demo_directory": "F:\\CSGO Demo Dataset",
             "event_name": "PGL Major Stockholm 2021"
         }
 

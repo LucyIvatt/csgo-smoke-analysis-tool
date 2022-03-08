@@ -1,4 +1,4 @@
-from csgo.parser import DemoParser
+from awpy.parser import DemoParser
 from configparser import ConfigParser
 
 # Read config.ini file
