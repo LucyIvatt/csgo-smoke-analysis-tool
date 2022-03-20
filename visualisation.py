@@ -3,21 +3,20 @@ import matplotlib.pyplot as plt
 from awpy.visualization.plot import plot_map, position_transform
 from awpy.data import MAP_DATA
 from configparser import ConfigParser
-import json
-import os.path
-
-SMOKE_DIAMETER_UNITS = 288
+from analysis import load_doorway_data
 
 # Read config.ini file
 config = ConfigParser()
 config.read("config.ini")
-demo_dir = config["Data Set"]["demo_directory"]
+demo_dir = config["Data"]["demo_directory"]
 
 
 def plot_all_smokes(rounds, map_name, map_type="simpleradar", dark=True):
     fig, a = plot_map(map_name=map_name, map_type=map_type, dark=dark)
     fig.set_size_inches(18.5, 10.5)
-    smoke_diameter_scaled = SMOKE_DIAMETER_UNITS / MAP_DATA[map_name]["scale"]
+    smoke_r_scaled = config["Data"]["smoke_radius_units"] / \
+        MAP_DATA[map_name]["scale"]
+    smoke_colour = config["Visualisation"]["smoke_colour"]
     for r in rounds:
         if r["grenades"]:
             for g in r["grenades"]:
@@ -25,7 +24,7 @@ def plot_all_smokes(rounds, map_name, map_type="simpleradar", dark=True):
                 end_y = position_transform(map_name, g["grenadeY"], "y")
                 if g["grenadeType"] == "Smoke Grenade":
                     smoke_circle = plt.Circle(
-                        (end_x, end_y), smoke_diameter_scaled / 2, alpha=0.1, color="white")
+                        (end_x, end_y), smoke_r_scaled, alpha=0.2, color=smoke_colour)
                     a.add_artist(smoke_circle)
     plt.show()
     return fig
@@ -46,23 +45,46 @@ def draw_introduction_figures():
                         '\\mirage_smoke_map.png', dpi=100)
 
 
+def transform(value, axis):
+    return position_transform("de_mirage", value, axis)
+
+
 def draw_doorway_image():
-    entrances_file = open("de_mirage_entrances.json")
-    entrances_data = json.load(entrances_file)
+    doorways = load_doorway_data()
     fig, a = plot_map(map_name="de_mirage", map_type="simpleradar")
     fig.set_size_inches(18.5, 10.5)
 
-    for entrance in entrances_data.values():
-        x1 = position_transform("de_mirage", entrance["x1"], "x")
-        x2 = position_transform("de_mirage", entrance["x2"], "x")
-        y1 = position_transform("de_mirage", entrance["y1"], "y")
-        y2 = position_transform("de_mirage", entrance["y2"], "y")
-        a.plot([x1, x2], [y1, y2], color="#FF10F0", linewidth=2.5)
-        a.scatter(x1, y1, color="#FF10F0")
-        a.scatter(x2, y2, color="#FF10F0")
-    fig.savefig(config["Outputs"]["image_save_location"] +
-                '\\doorway_locations.png', dpi=100)
+    # Two iterations to ensure draw order is correct for alpha when overlapping
+    for doorway in doorways:
+        # Plots a circle representing the detection radius of the doorway
+        mp_x_scaled = transform(doorway.midpoint.x, "x")
+        mp_y_scaled = transform(doorway.midpoint.y, "y")
+        detect_r_scaled = int(config["Data"]["detection_radius_units"]) / \
+            MAP_DATA["de_mirage"]["scale"]
+        a.add_artist(plt.Circle(
+            (mp_x_scaled, mp_y_scaled), detect_r_scaled, alpha=0.15, color="white"))
+        a.add_artist(plt.Circle(
+            (mp_x_scaled, mp_y_scaled), detect_r_scaled-10, alpha=0.15, color="red"))
+        a.add_artist(plt.Circle(
+            (mp_x_scaled, mp_y_scaled), detect_r_scaled-20, alpha=0.15, color="white"))
+        a.add_artist(plt.Circle(
+            (mp_x_scaled, mp_y_scaled), detect_r_scaled-30, alpha=0.15, color="red"))
+
+    for doorway in doorways:
+        # Plots a line for the doorway
+        x1 = transform(doorway.coord1_vector.x, "x")
+        x2 = transform(doorway.coord2_vector.x, "x")
+        y1 = transform(doorway.coord1_vector.y, "y")
+        y2 = transform(doorway.coord2_vector.y, "y")
+
+        doorway_colour = config["Visualisation"]["doorway_colour"]
+        a.plot([x1, x2], [y1, y2], color=doorway_colour, linewidth=3)
+        a.add_artist(plt.Circle((x1, y1), 3, color=doorway_colour))
+        a.add_artist(plt.Circle((x2, y2), 3, color=doorway_colour))
+
+    # fig.savefig(config["Outputs"]["image_save_location"] +
+    #             '\\doorway_locations.png', dpi=100)
     plt.show()
 
 
-draw_introduction_figures()
+draw_doorway_image()
