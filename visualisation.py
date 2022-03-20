@@ -53,22 +53,25 @@ def draw_doorway_image():
     doorways = load_doorway_data()
     fig, a = plot_map(map_name="de_mirage", map_type="simpleradar")
     fig.set_size_inches(18.5, 10.5)
+    map_scale = MAP_DATA["de_mirage"]["scale"]
 
     # Two iterations to ensure draw order is correct for alpha when overlapping
     for doorway in doorways:
         # Plots a circle representing the detection radius of the doorway
         mp_x_scaled = transform(doorway.midpoint.x, "x")
         mp_y_scaled = transform(doorway.midpoint.y, "y")
-        detect_r_scaled = int(config["Data"]["detection_radius_units"]) / \
-            MAP_DATA["de_mirage"]["scale"]
+
+        detection_r = config["Data"]["detection_radius_units"]
+        detection_r_scaled = int(detection_r) / map_scale
+
         a.add_artist(plt.Circle(
-            (mp_x_scaled, mp_y_scaled), detect_r_scaled, alpha=0.15, color="white"))
+            (mp_x_scaled, mp_y_scaled), detection_r_scaled, alpha=0.15, color="white"))
         a.add_artist(plt.Circle(
-            (mp_x_scaled, mp_y_scaled), detect_r_scaled-10, alpha=0.15, color="red"))
+            (mp_x_scaled, mp_y_scaled), detection_r_scaled-10, alpha=0.15, color="red"))
         a.add_artist(plt.Circle(
-            (mp_x_scaled, mp_y_scaled), detect_r_scaled-20, alpha=0.15, color="white"))
+            (mp_x_scaled, mp_y_scaled), detection_r_scaled-20, alpha=0.15, color="white"))
         a.add_artist(plt.Circle(
-            (mp_x_scaled, mp_y_scaled), detect_r_scaled-30, alpha=0.15, color="red"))
+            (mp_x_scaled, mp_y_scaled), detection_r_scaled-30, alpha=0.15, color="red"))
 
     for doorway in doorways:
         # Plots a line for the doorway
@@ -82,8 +85,9 @@ def draw_doorway_image():
         a.add_artist(plt.Circle((x1, y1), 3, color=doorway_colour))
         a.add_artist(plt.Circle((x2, y2), 3, color=doorway_colour))
 
-    # fig.savefig(config["Outputs"]["image_save_location"] +
-    #             '\\doorway_locations.png', dpi=100)
+    save_loc = config["Visualisation"]["save_location"] + \
+        '\\doorway_locations.png'
+    fig.savefig(save_loc, dpi=300)
     plt.show()
 
 

@@ -25,6 +25,9 @@ class Doorway():
         else:
             return dist_units
 
+    def calculate_coverage(self, smoke_x, smoke_y):
+        pass
+
 
 def load_doorway_data():
     entrances_file = open("de_mirage_entrances.json")
@@ -39,7 +42,3 @@ def load_doorway_data():
                     y2=data["y2"],
                     z=data["z"]))
     return doorways
-
-
-doorways = load_doorway_data()
-print(doorways[0].distance_from_midpoint(-700, -1270))
