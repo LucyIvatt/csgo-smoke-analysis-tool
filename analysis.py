@@ -14,7 +14,7 @@ class Doorway():
     def __str__(self):
         return f"Doorway({self.name.capitalize()} -> (x1, y1)={self.coord1_vector}, (x2_y2)={self.coord2_vector}, (midx, midy)={self.midpoint}, z={self.z})"
 
-    def distance_from_midpoint(smoke_x, smoke_y, meters=False):
+    def distance_from_midpoint(self, smoke_x, smoke_y, meters=False):
         smoke_vector = Vector2(smoke_x, smoke_y)
         dist_units = smoke_vector.distance_to(self.midpoint)
 
@@ -41,5 +41,5 @@ def load_doorway_data():
     return doorways
 
 
-# doorways = load_doorway_data()
-# doorways[0].calculate_accuracy(-700, -1270)
+doorways = load_doorway_data()
+print(doorways[0].distance_from_midpoint(-700, -1270))
