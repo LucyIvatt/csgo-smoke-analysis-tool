@@ -133,6 +133,4 @@ chromedriver.exe
 
 # Parsed Demos
 *.json
-
-# Config file
-config.ini
+!de_mirage_entrances.json
