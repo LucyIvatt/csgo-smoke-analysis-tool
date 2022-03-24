@@ -101,21 +101,42 @@ def draw_representation_cases():
     subplots = [ax1, ax2, ax3, ax4, ax5, ax6]
     smoke_radius = int(config['Data']['smoke_radius_units'])
     print(smoke_radius)
+
+    num = 1
     for plot in subplots:
+        plot.set_aspect('equal')
         plot.add_patch(plt.Circle(
             (200, 200), smoke_radius, color="black", linewidth=4, fill=False))
 
-    x_values = [25, 375]
-    y_values = [250, 150]
+    x_values = [75, 300]
+    y_values = [280, 310]
     ax1.plot(x_values, y_values, 'bo', linestyle='dashed')
+    ax1.set_title("1. Gaps on both sides")
+
+    x_values = [50, 350]
+    y_values = [72, 72]
+    ax2.plot(x_values, y_values, 'bo', linestyle='dashed')
+    ax2.set_title("2. Doorway tangent to smoke")
 
     x_values = [125, 275]
     y_values = [250, 150]
     ax3.plot(x_values, y_values, 'bo', linestyle='dashed')
+    ax3.set_title("3. Doorway fully covered")
 
     x_values = [150, 400]
-    y_values = [25, 100]
+    y_values = [10, 110]
     ax4.plot(x_values, y_values, 'bo', linestyle='dashed')
+    ax4.set_title("4. No collision")
+
+    x_values = [200, 400]
+    y_values = [200, 250]
+    ax5.plot(x_values, y_values, 'bo', linestyle='dashed')
+    ax5.set_title("5. Gap on one side")
+
+    x_values = [100, 25]
+    y_values = [300, 400]
+    ax6.plot(x_values, y_values, 'bo', linestyle='dashed')
+    ax6.set_title("6. No collision\n(would if doorway extended)")
 
     plt.show()
 
