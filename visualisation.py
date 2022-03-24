@@ -91,4 +91,33 @@ def draw_doorway_image():
     plt.show()
 
 
-draw_doorway_image()
+def draw_representation_cases():
+    plt.rcParams.update({'font.size': 16})
+    fig, ((ax1, ax2, ax3), (ax4, ax5, ax6)) = plt.subplots(
+        2, 3, sharex=True, sharey=True)
+    plt.autoscale(True)
+    fig.set_size_inches(18, 12)
+
+    subplots = [ax1, ax2, ax3, ax4, ax5, ax6]
+    smoke_radius = int(config['Data']['smoke_radius_units'])
+    print(smoke_radius)
+    for plot in subplots:
+        plot.add_patch(plt.Circle(
+            (200, 200), smoke_radius, color="black", linewidth=4, fill=False))
+
+    x_values = [25, 375]
+    y_values = [250, 150]
+    ax1.plot(x_values, y_values, 'bo', linestyle='dashed')
+
+    x_values = [125, 275]
+    y_values = [250, 150]
+    ax3.plot(x_values, y_values, 'bo', linestyle='dashed')
+
+    x_values = [150, 400]
+    y_values = [25, 100]
+    ax4.plot(x_values, y_values, 'bo', linestyle='dashed')
+
+    plt.show()
+
+
+draw_representation_cases()

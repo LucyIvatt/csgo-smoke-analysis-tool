@@ -44,12 +44,48 @@ class Doorway():
         else:
             return dist_units
 
-    def draw_abstract_representation(self, smoke, test=False):
+    def draw_abstract_representation(self, smoke, plot_radius=False):
+        plt.rcParams.update({'font.size': 16})
         fig1 = plt.figure()
+        fig1.set_size_inches(12, 12)
         ax1 = fig1.add_subplot(111, aspect='equal')
 
-        spacing = 0.25 if test else 10
+        spacing = 6
 
+        # Plots the doorway
+        x_values = [self.vector1.x, self.vector2.x]
+        y_values = [self.vector1.y, self.vector2.y]
+        ax1.plot(x_values, y_values, 'bo', linestyle='dashed')
+        ax1.text(self.vector1.x + spacing, self.vector1.y,
+                 f"D1\n({self.vector1.x}, {self.vector1.y})", horizontalalignment='left',
+                 verticalalignment='center')
+        ax1.text(self.vector2.x + spacing, self.vector2.y,
+                 f"D2\n({self.vector2.x}, {self.vector2.y})", horizontalalignment='left',
+                 verticalalignment='center')
+
+        # Plots the radius line
+        if plot_radius:
+            x_values = [smoke.vector.x, smoke.vector.x-smoke.radius]
+            y_values = [smoke.vector.y, smoke.vector.y]
+            ax1.plot(x_values, y_values, marker="o",
+                     color='grey', linestyle="solid")
+            ax1.text(smoke.vector.x - smoke.radius/2, smoke.vector.y - spacing*2,
+                     f"Smoke radius\n({smoke.radius} units)", horizontalalignment='center',
+                     verticalalignment='center')
+
+        # Plots the smoke
+        plt.plot(smoke.vector.x, smoke.vector.y, marker="o", markersize=5, markeredgecolor="black",
+                 markerfacecolor="black")
+
+        smoke_circle = plt.Circle(
+            (smoke.vector.x, smoke.vector.y), smoke.radius, alpha=1, color="black", linewidth=4, fill=False)
+        ax1.text(smoke.vector.x, smoke.vector.y+spacing*2, f"Smoke\n({smoke.vector.x}, {smoke.vector.y})", horizontalalignment='center',
+                 verticalalignment='center')
+
+        ax1.add_patch(smoke_circle)
+        ax1.autoscale_view()
+
+    def calculate_coverage(self, smoke):
         # Test code to calculate points of intersection
         # Checks if both coordinates are within the circle
         d1_in_smoke = smoke.coordinate_in_smoke(self.vector1.x, self.vector1.y)
@@ -85,6 +121,7 @@ class Doorway():
                 else:
                     point_1 = self.vector1 + t1 * V
                     point_2 = self.vector1 + t2 * V
+
                     if 0 <= t1 <= 1 and not 0 <= t2 <= 1:
                         point_2 = self.vector1 if d1_in_smoke else self.vector2
                     elif not 0 <= t1 <= 1 and 0 <= t2 <= 1:
@@ -100,37 +137,15 @@ class Doorway():
                     print(f"Coverage in units: {coverage_in_units}")
                     print(f"Percentage coverage {percentage_coverage}")
 
-        # Plots the doorway
-        x_values = [self.vector1.x, self.vector2.x]
-        y_values = [self.vector1.y, self.vector2.y]
-        ax1.plot(x_values, y_values, 'bo', linestyle="--")
-        ax1.text(self.vector1.x + spacing, self.vector1.y, "D1")
-        ax1.text(self.vector2.x + spacing, self.vector2.y, "D2")
-
-        # Plots the smoke
-        plt.plot(smoke.vector.x, smoke.vector.y, marker="o", markersize=5, markeredgecolor="black",
-                 markerfacecolor="black")
-
-        smoke_circle = plt.Circle(
-            (smoke.vector.x, smoke.vector.y), smoke.radius, alpha=1, color="black", linewidth=4, fill=False)
-        ax1.text(smoke.vector.x, smoke.vector.y+spacing, "Smoke", horizontalalignment='center',
-                 verticalalignment='center')
-
-        ax1.add_patch(smoke_circle)
-        ax1.autoscale_view()
-
-    def calculate_coverage(self, smoke_x, smoke_y,):
-        pass
-
 
 def point_within_circle(point_x, point_y, circle_x, circle_y, radius):
     return (point_x - circle_x)**2 + (point_y - circle_y)**2 < radius**2
 
 
-def run_test():
-    test_doorway = Doorway("Test", 3, 3, 6, 7, None)
-    test_smoke = Smoke(4, 7, None, 3)
-    test_doorway.draw_abstract_representation(test_smoke, True)
+def draw_example():
+    test_doorway = Doorway("Test", 150, 50, 250, 250, None)
+    test_smoke = Smoke(200, 200, None)
+    test_doorway.draw_abstract_representation(test_smoke, plot_radius=True)
     plt.show()
 
 
@@ -147,6 +162,3 @@ def load_doorway_data():
                     y2=data["y2"],
                     z=data["z"]))
     return doorways
-
-
-run_test()

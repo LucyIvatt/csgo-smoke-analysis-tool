@@ -19,3 +19,4 @@ data = parser.read_json(
 
 # print first grenade from round 4
 print(data["gameRounds"][4]['grenades'][0])
+print(type(data["gameRounds"][4]['grenades']))
