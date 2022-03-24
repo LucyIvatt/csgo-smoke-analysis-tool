@@ -46,6 +46,8 @@ class Doorway():
 
     def draw_abstract_representation(self, smoke, plot_radius=False):
         plt.rcParams.update({'font.size': 16})
+        plt.rcParams['font.family'] = 'sans-serif'
+        plt.rcParams['font.sans-serif'] = ['Helvetica']
         fig1 = plt.figure()
         fig1.set_size_inches(12, 12)
         ax1 = fig1.add_subplot(111, aspect='equal')
@@ -96,6 +98,7 @@ class Doorway():
 
         if d1_in_smoke and d2_in_smoke:
             print("Doorway fully within smoke - 100%")
+            return 100
         else:
             # coefficients for quadratic equation
             V = self.vector2-self.vector1
@@ -109,6 +112,7 @@ class Doorway():
             disc = b**2 - 4 * a * c
             if disc < 0:
                 print("Smoke does not intersect the doorway at any point - 0%")
+                return 0
             else:
                 sqrt_disc = math.sqrt(disc)
                 t1 = (-b + sqrt_disc) / (2 * a)
@@ -116,8 +120,10 @@ class Doorway():
                 if not (0 <= t1 <= 1 or 0 <= t2 <= 1):
                     print(
                         "Smoke does not intersect the doorway at any point - would if doorway extended - 0%")
+                    return 0
                 elif t1 == t2:
                     print("Doorway is at a tangent to the smoke grenade - 0%")
+                    return 0
                 else:
                     point_1 = self.vector1 + t1 * V
                     point_2 = self.vector1 + t2 * V
@@ -136,6 +142,7 @@ class Doorway():
                     print(f"Point 2: {point_2} t2: {t2}")
                     print(f"Coverage in units: {coverage_in_units}")
                     print(f"Percentage coverage {percentage_coverage}")
+                    return percentage_coverage
 
 
 def point_within_circle(point_x, point_y, circle_x, circle_y, radius):
@@ -162,3 +169,6 @@ def load_doorway_data():
                     y2=data["y2"],
                     z=data["z"]))
     return doorways
+
+
+draw_example()
