@@ -4,6 +4,7 @@ import os
 import time
 from configparser import ConfigParser
 import logging
+import json
 
 EVENTS = []
 HLTV_BASE_URL = "https://www.hltv.org/"
@@ -11,13 +12,14 @@ HLTV_BASE_URL = "https://www.hltv.org/"
 # Reads config file to find directory of demo files
 config = ConfigParser()
 config.read("config.ini")
-demo_dir = config["Data"]["demo_directory"]
-demo_id_file = demo_dir + "\\matchids" + ".txt"
+DEMO_DIR = config["Data"]["demo_directory"]
+DEMO_ID_FILE = DEMO_DIR + "\\metadata\\match_ids.txt"
+RESULT_LINK_FILE = DEMO_DIR + "\\metadata\\results_links.json"
 logging.basicConfig(level=logging.INFO, filename='logs//scraper.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 
-def init_driver(download_path=demo_dir):
+def init_driver(download_path=DEMO_DIR):
     '''
     Initializes and returns web driver object with logging messages hidden.
     '''
@@ -29,62 +31,36 @@ def init_driver(download_path=demo_dir):
     return webdriver.Chrome(options=options)
 
 
-def find_event_results_page_url(event_name):
-    '''
-    Returns the HLTV URL containing the list of match results for a given event.
-    '''
-    driver = init_driver()
-    driver.get(HLTV_BASE_URL)
+def get_results_page_urls():
+    ''' Returns all results page links for international lans between '''
 
-    # Expands burger menu to show search bar
-    burger = driver.find_element_by_xpath(
-        "//div[@class='navburger navburger2']")
-    burger.click()
+    if os.path.exists(RESULT_LINK_FILE):
+        logging.info("Event link file already exists, returning saved file")
+        with open(RESULT_LINK_FILE, 'r') as f:
+            results_links = json.load(f)
+        return results_links
 
-    # Searches for the event name & navigates to link provided by search results
-    search_bar = driver.find_element_by_css_selector(
-        "input[placeholder='Search...']")
-    search_bar.send_keys(event_name)
-    time.sleep(2)
-    try:
-        event_link = driver.find_element_by_xpath(
-            "//div[@class='box eventsearch expanded hoverable']/div/a")
-    except:
-        event_link = driver.find_element_by_xpath(
-            "//div[@class='box compact eventsearch hoverable']/a")
+    else:
+        RESULTS_BASE = "https://www.hltv.org/results?event="
+        results_links = []
+        driver = init_driver()
+        link_start = "https://www.hltv.org/events/archive?startDate=2020-02-20&endDate=2022-01-01&eventType=MAJOR&eventType=INTLLAN&eventType=REGIONALLAN"
 
-    driver.get(event_link.get_attribute("href"))
-
-    # finds results button on the event page and returns the URL associated with it
-    results_page = driver.find_element_by_xpath(
-        "//div[@class='event-hub-bottom']/a[contains(text(), 'Results')]")
-    results_url = results_page.get_attribute("href")
-
-    driver.quit()
-    logging.info('Found event results page url for event ' +
-                 event_name + " - " + results_url)
-
-    return results_url
-
-
-def get_events_page_urls():
-    driver = init_driver()
-    link_start = "https://www.hltv.org/events/archive?offset="
-    link_end = "&startDate=2012-04-20&endDate=2028-02-20&eventType=INTLLAN"
-    event_links = []
-
-    for offset in range(0, 450, 50):
         # Goes to the page that contains all international LAN events
-        driver.get(link_start + str(offset) + link_end)
+        driver.get(link_start)
 
         events = driver.find_elements_by_xpath(
             "//div[@class='events-page']/div/a[@class='a-reset small-event standard-box']")
 
         for event in events:
-            event_links.append(event.get_attribute("href"))
+            event_page = event.get_attribute("href")
+            event_id = event_page.split("/")[-2]
+            results_links.append(RESULTS_BASE + event_id)
 
-    print(len(event_links))
-    return event_links
+        with open(RESULT_LINK_FILE, 'w') as f:
+            json.dump(results_links, f, indent=2)
+        driver.close()
+        return results_links
 
 
 def get_match_urls(event_name, event_results_url):
@@ -121,10 +97,10 @@ def write_demo_id_to_file(demo_id):
     '''
     Appends a demo id to the demo id file stored in the root of the demo directory.
     '''
-    file = open(demo_id_file, "a")
+    file = open(DEMO_ID_FILE, "a")
     file.write(demo_id + "\n")
     file.close()
-    logging.info("Wrote demo ID: " + demo_id + " to " + demo_id_file)
+    logging.info("Wrote demo ID: " + demo_id + " to " + DEMO_ID_FILE)
 
 
 def download_demo(event_name, match_page, vs_string):
@@ -134,7 +110,7 @@ def download_demo(event_name, match_page, vs_string):
     Prevents duplicate download if demo id is already stored in the demo id file.
     '''
     # Checks if a folder for the event already exists, otherwise creates one
-    dl_path = demo_dir + "\\" + event_name
+    dl_path = DEMO_DIR + "\\" + event_name
     if not os.path.exists(dl_path):
         os.makedirs(dl_path)
         logging.info("Folder for event - " + event_name +
@@ -151,7 +127,7 @@ def download_demo(event_name, match_page, vs_string):
     demo_link = demo_button.get_attribute("href").split("/")
     demo_id = demo_link[-1]
 
-    with open(demo_id_file) as file:
+    with open(DEMO_ID_FILE) as file:
         # If not a duplicate download, downloads the file and writes ID to demo id file
         if demo_id not in file.read():
             demo_button.click()
@@ -161,7 +137,7 @@ def download_demo(event_name, match_page, vs_string):
             write_demo_id_to_file(demo_id)
         else:
             logging.info("Event ID " + demo_id + "already found in " +
-                         demo_id_file + ". Skipping...")
+                         DEMO_ID_FILE + ". Skipping...")
 
 
 def download_wait(path_to_downloads):
@@ -178,4 +154,4 @@ def download_wait(path_to_downloads):
     logging.info("Download finished")
 
 
-get_events_page_urls()
+urls = get_results_page_urls()
