@@ -1,15 +1,17 @@
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 import os
 import time
 from configparser import ConfigParser
 import logging
 
+EVENTS = []
 HLTV_BASE_URL = "https://www.hltv.org/"
 
 # Reads config file to find directory of demo files
 config = ConfigParser()
 config.read("config.ini")
-demo_dir = config["Data Set"]["demo_directory"]
+demo_dir = config["Data"]["demo_directory"]
 demo_id_file = demo_dir + "\\matchids" + ".txt"
 logging.basicConfig(level=logging.INFO, filename='logs//scraper.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
@@ -63,6 +65,26 @@ def find_event_results_page_url(event_name):
                  event_name + " - " + results_url)
 
     return results_url
+
+
+def get_events_page_urls():
+    driver = init_driver()
+    link_start = "https://www.hltv.org/events/archive?offset="
+    link_end = "&startDate=2012-04-20&endDate=2028-02-20&eventType=INTLLAN"
+    event_links = []
+
+    for offset in range(0, 450, 50):
+        # Goes to the page that contains all international LAN events
+        driver.get(link_start + str(offset) + link_end)
+
+        events = driver.find_elements_by_xpath(
+            "//div[@class='events-page']/div/a[@class='a-reset small-event standard-box']")
+
+        for event in events:
+            event_links.append(event.get_attribute("href"))
+
+    print(len(event_links))
+    return event_links
 
 
 def get_match_urls(event_name, event_results_url):
@@ -154,3 +176,6 @@ def download_wait(path_to_downloads):
             if file.endswith('.crdownload'):
                 wait = True
     logging.info("Download finished")
+
+
+get_events_page_urls()

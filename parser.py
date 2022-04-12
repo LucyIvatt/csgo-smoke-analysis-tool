@@ -18,5 +18,5 @@ data = parser.read_json(
     f"{demo_dir}//misc//introduction_demos//natus-vincere-vs-g2-m1-inferno.json")
 
 # print first grenade from round 4
-print(data["gameRounds"][4]['grenades'][0])
-print(type(data["gameRounds"][4]['grenades']))
+print(data["gameRounds"][4].keys())
+print(data["gameRounds"][4]["ctSpend"])
