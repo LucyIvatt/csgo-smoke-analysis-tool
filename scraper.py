@@ -12,9 +12,14 @@ HLTV_BASE_URL = "https://www.hltv.org/"
 # Reads config file to find directory of demo files
 config = ConfigParser()
 config.read("config.ini")
+
 DEMO_DIR = config["Data"]["demo_directory"]
-DEMO_ID_FILE = DEMO_DIR + "\\metadata\\match_ids.txt"
-RESULT_LINK_FILE = DEMO_DIR + "\\metadata\\results_links.json"
+METADATA_DIR = DEMO_DIR + "\\metadata\\"
+
+DEMO_ID_FILE = METADATA_DIR + "saved_match_ids.json"
+RESULTS_URL_FILE = METADATA_DIR + "results_urls.json"
+MATCH_URL_FILE = METADATA_DIR + "match_urls.json"
+
 logging.basicConfig(level=logging.INFO, filename='logs//scraper.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
@@ -32,65 +37,110 @@ def init_driver(download_path=DEMO_DIR):
 
 
 def get_results_page_urls():
-    ''' Returns all results page links for international lans between '''
+    ''' Returns all results page URLs for regional, international & major LANs between 20/02/2020 & 10/4/2022 due
+        to dataset constraints'''
 
-    if os.path.exists(RESULT_LINK_FILE):
-        logging.info("Event link file already exists, returning saved file")
-        with open(RESULT_LINK_FILE, 'r') as f:
-            results_links = json.load(f)
-        return results_links
+    logging.info("Collecting results page URLS... ")
+
+    if os.path.exists(RESULTS_URL_FILE):
+        logging.info(
+            "Event URLs already collected, returning data from file [{RESULTS_URL_FILE}]")
+        with open(RESULTS_URL_FILE, 'r') as f:
+            return json.load(f)
 
     else:
         RESULTS_BASE = "https://www.hltv.org/results?event="
-        results_links = []
+        results_urls = []
         driver = init_driver()
-        link_start = "https://www.hltv.org/events/archive?startDate=2020-02-20&endDate=2022-01-01&eventType=MAJOR&eventType=INTLLAN&eventType=REGIONALLAN"
+        events_list_url = "https://www.hltv.org/events/archive?startDate=2020-02-20&endDate=2022-04-10&eventType=MAJOR&eventType=INTLLAN&eventType=REGIONALLAN"
 
-        # Goes to the page that contains all international LAN events
-        driver.get(link_start)
+        # Navigates to filtered page containing all regional, international & major LANs between 20/02/2020 & 10/4/2022
+        driver.get(events_list_url)
 
-        events = driver.find_elements_by_xpath(
-            "//div[@class='events-page']/div/a[@class='a-reset small-event standard-box']")
+        # Gets all event containers
+        events = driver.find_elements(
+            by=By.XPATH, value="//div[@class='events-page']/div/a[@class='a-reset small-event standard-box']")
 
         for event in events:
             event_page = event.get_attribute("href")
             event_id = event_page.split("/")[-2]
-            results_links.append(RESULTS_BASE + event_id)
 
-        with open(RESULT_LINK_FILE, 'w') as f:
-            json.dump(results_links, f, indent=2)
+            # For each event found, extracts event ID and adds to results base url
+            results_urls.append(RESULTS_BASE + event_id)
+            logging.info(
+                f"Adding results URL for EVENT_ID - {event_id}")
+
         driver.close()
-        return results_links
+
+        # Saves all result page urls to file
+        with open(RESULTS_URL_FILE, 'w') as f:
+            json.dump(results_urls, f, indent=2)
+
+        logging.info(
+            f"Saving all results page URLs to file [{RESULTS_URL_FILE}]")
+        logging.info(f"Number of events found - {len(results_urls)}")
+
+        return results_urls
 
 
-def get_match_urls(event_name, event_results_url):
+def get_match_urls(results_pages):
     '''
-    Returns the all HLTV match URLs found on an events results page.
+    Returns the all HLTV match URLs found on an events results page if the match involved mirage.
     '''
-    driver = init_driver()
-    driver.get(event_results_url)
+    logging.info("Collecting match page URLS... ")
 
-    # appends the link for each result to the list results_list
-    results = driver.find_elements_by_xpath("//div[@class='result-con ']/a")
-    results_list = []
-    logging.info("Finding all match result URLS for " + event_name + "...")
-    for match in results:
-        team_one = match.find_element_by_xpath(
-            ".//div/table/tbody/tr/td/div[@class='line-align team1']/div").text
-        team_two = match.find_element_by_xpath(
-            ".//div/table/tbody/tr/td/div[@class='line-align team2']/div").text
-        vs_string = team_one + " vs " + team_two
-        match_url = match.get_attribute("href")
-        results_list.append((match_url, vs_string))
+    if os.path.exists(MATCH_URL_FILE):
+        logging.info(
+            "Match URLs already collected returning data from file [{MATCH_URL_FILE}]")
+        with open(MATCH_URL_FILE, 'r') as f:
+            return json.load(f)
+    else:
+        driver = init_driver()
+        match_urls = {}
 
-        logging.info("Found match page URL for: " +
-                     vs_string + " - " + match_url)
+        for results_page in results_pages:
+            event_id = results_page.split("=")[-1]
+            logging.info(
+                f"Finding all match result URLS for EVENT_ID - {event_id}")
+            # Navigates to the results page
+            driver.get(results_page)
 
-    driver.quit()
-    logging.info("All matches found for " + event_name +
-                 " - Number of matches found: " + str(len(results)))
+            # Saves each match url from the results page
+            results = driver.find_elements(
+                by=By.XPATH, value="//div[@class='result-con']/a")
+            for match in results:
+                match_url = match.get_attribute("href")
+                match_id = match_url.split("/")[-2]
+                logging.info(f"Adding URL for MATCH_ID - {match_id}")
+                match_urls[match_id] = match_url
 
-    return results_list
+            # Checks the list of maps played on each url and deletes it from the dictionary if de_mirage wasn't played.
+            matches_to_delete = []
+            for match_id, url in match_urls.items():
+                driver.get(url)
+                played_maps = [elm.text for elm in driver.find_elements(
+                    by=By.XPATH, value="//div[@class='played']/div/div[@class='mapname']")]
+
+                if "Mirage" not in played_maps:
+                    matches_to_delete.append(match_id)
+                    logging.info(
+                        f"Deleting URL for MATCH_ID - {match_id} as de_mirage was not played")
+
+            for id in matches_to_delete:
+                del match_urls[id]
+
+        driver.quit()
+
+        # Saves all match urls to file
+        with open(MATCH_URL_FILE, 'w') as f:
+            json.dump(match_urls, f, indent=2)
+
+        logging.info(
+            f"Saving all match URLs to file [{MATCH_URL_FILE}]")
+
+        logging.info(f"Number of matches found - {len(match_urls.keys())}")
+
+        return match_urls
 
 
 def write_demo_id_to_file(demo_id):
@@ -154,4 +204,5 @@ def download_wait(path_to_downloads):
     logging.info("Download finished")
 
 
-urls = get_results_page_urls()
+results_urls = get_results_page_urls()
+match_urls = get_match_urls(results_urls)
