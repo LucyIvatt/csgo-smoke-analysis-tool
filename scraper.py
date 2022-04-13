@@ -24,12 +24,15 @@ logging.basicConfig(level=logging.INFO, filename='logs//scraper.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 
-def init_driver(download_path=DEMO_DIR):
+def init_driver(download_path=DEMO_DIR, headless=True):
     '''
     Initializes and returns web driver object with logging messages hidden.
     '''
     logging.info("Initializing Chrome Web Driver...")
     options = webdriver.ChromeOptions()
+    if headless:
+        options.add_argument('--headless')
+        options.add_argument('--disable-gpu')
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     options.add_experimental_option(
         'prefs', {'download.default_directory': download_path})
@@ -41,10 +44,11 @@ def get_results_page_urls():
         to dataset constraints'''
 
     logging.info("Collecting results page URLS... ")
+    start_time = time.time()
 
     if os.path.exists(RESULTS_URL_FILE):
         logging.info(
-            "Event URLs already collected, returning data from file [{RESULTS_URL_FILE}]")
+            f"Event URLs already collected, returning data from file [{RESULTS_URL_FILE}]")
         with open(RESULTS_URL_FILE, 'r') as f:
             return json.load(f)
 
@@ -79,7 +83,8 @@ def get_results_page_urls():
         logging.info(
             f"Saving all results page URLs to file [{RESULTS_URL_FILE}]")
         logging.info(f"Number of events found - {len(results_urls)}")
-
+        logging.info(
+            f"Time taken to execute - {time.time() - start_time:.2f}s")
         return results_urls
 
 
@@ -88,10 +93,11 @@ def get_match_urls(results_pages):
     Returns the all HLTV match URLs found on an events results page if the match involved mirage.
     '''
     logging.info("Collecting match page URLS... ")
+    start_time = time.time()
 
     if os.path.exists(MATCH_URL_FILE):
         logging.info(
-            "Match URLs already collected returning data from file [{MATCH_URL_FILE}]")
+            f"Match URLs already collected returning data from file [{MATCH_URL_FILE}]")
         with open(MATCH_URL_FILE, 'r') as f:
             return json.load(f)
     else:
@@ -139,55 +145,46 @@ def get_match_urls(results_pages):
             f"Saving all match URLs to file [{MATCH_URL_FILE}]")
 
         logging.info(f"Number of matches found - {len(match_urls.keys())}")
-
+        logging.info(
+            f"Time taken to execute - {time.time() - start_time:.2f}s")
         return match_urls
 
 
-def write_demo_id_to_file(demo_id):
-    '''
-    Appends a demo id to the demo id file stored in the root of the demo directory.
-    '''
-    file = open(DEMO_ID_FILE, "a")
-    file.write(demo_id + "\n")
-    file.close()
-    logging.info("Wrote demo ID: " + demo_id + " to " + DEMO_ID_FILE)
-
-
-def download_demo(event_name, match_page, vs_string):
+def download_demos(match_urls):
     '''
     Downloads a demo file from a match page into the demo directory inside a folder named after the event.
-
     Prevents duplicate download if demo id is already stored in the demo id file.
     '''
     # Checks if a folder for the event already exists, otherwise creates one
-    dl_path = DEMO_DIR + "\\" + event_name
-    if not os.path.exists(dl_path):
-        os.makedirs(dl_path)
-        logging.info("Folder for event - " + event_name +
-                     " - not found, creating folder...")
-    else:
-        logging.info("Folder for event - " + event_name +
-                     " - found.")
+    driver = init_driver(headless=False)
 
-    driver = init_driver(dl_path)
-    driver.get(match_page)
+    downloaded_demo_ids = []
+    if os.path.exists(DEMO_ID_FILE):
+        logging.info(f"Demo ID file exists at [{DEMO_ID_FILE}], loading ")
+        with open(MATCH_URL_FILE, 'r') as f:
+            downloaded_demo_ids = json.load(f)
 
-    # Finds the download demo button and extracts demo ID from URL
-    demo_button = driver.find_element_by_xpath("//*[text() = 'GOTV Demo']")
-    demo_link = demo_button.get_attribute("href").split("/")
-    demo_id = demo_link[-1]
+    try:
+        for demo_id, url in match_urls.items():
+            if demo_id not in downloaded_demo_ids:
+                driver.get(url)
 
-    with open(DEMO_ID_FILE) as file:
-        # If not a duplicate download, downloads the file and writes ID to demo id file
-        if demo_id not in file.read():
-            demo_button.click()
-            logging.info("Downloading demo ID " +
-                         demo_id + " - " + vs_string + "...")
-            download_wait(dl_path)
-            write_demo_id_to_file(demo_id)
-        else:
-            logging.info("Event ID " + demo_id + "already found in " +
-                         DEMO_ID_FILE + ". Skipping...")
+                # Finds the download demo button and extracts demo ID from URL
+                demo_button = driver.find_element_by_xpath(
+                    "//*[text() = 'GOTV Demo']")
+                demo_button.click()
+
+                logging.info(f"Downloading DEMO_ID - {demo_id}")
+                download_wait(DEMO_DIR)
+                write_demo_id_to_file(demo_id)
+            else:
+                logging.info(
+                    f"DEMO_ID {demo_id} already downloaded - Skipping...")
+    except KeyboardInterrupt:
+        logging.info(f"Keyboard Interrupt Detected:")
+        driver.close()
+        with open(DEMO_ID_FILE, 'w') as f:
+            json.dump(downloaded_demo_ids, f, indent=2)
 
 
 def download_wait(path_to_downloads):
@@ -206,3 +203,4 @@ def download_wait(path_to_downloads):
 
 results_urls = get_results_page_urls()
 match_urls = get_match_urls(results_urls)
+download_demos(match_urls)
