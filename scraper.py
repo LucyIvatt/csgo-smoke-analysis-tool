@@ -5,6 +5,8 @@ import time
 from configparser import ConfigParser
 import logging
 import json
+import patoolib
+import shutil
 
 EVENTS = []
 HLTV_BASE_URL = "https://www.hltv.org/"
@@ -13,18 +15,21 @@ HLTV_BASE_URL = "https://www.hltv.org/"
 config = ConfigParser()
 config.read("config.ini")
 
-DEMO_DIR = config["Data"]["demo_directory"]
-METADATA_DIR = DEMO_DIR + "\\metadata\\"
+DATASET_DIR = config["Data"]["demo_directory"]
 
-DEMO_ID_FILE = METADATA_DIR + "saved_match_ids.json"
-RESULTS_URL_FILE = METADATA_DIR + "results_urls.json"
-MATCH_URL_FILE = METADATA_DIR + "match_urls.json"
+ARCHIVE_DIR = DATASET_DIR + "\\archives"
+EXTRACTED_DIR = DATASET_DIR + "\\mirage_demos"
+
+METADATA_DIR = DATASET_DIR + "\\metadata"
+DEMO_ID_FILE = METADATA_DIR + "\\saved_match_ids.json"
+RESULTS_URL_FILE = METADATA_DIR + "\\results_urls.json"
+MATCH_URL_FILE = METADATA_DIR + "\\match_urls.json"
 
 logging.basicConfig(level=logging.INFO, filename='logs//scraper.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 
-def init_driver(download_path=DEMO_DIR, headless=True):
+def init_driver(download_path=ARCHIVE_DIR, headless=True):
     '''
     Initializes and returns web driver object with logging messages hidden.
     '''
@@ -156,35 +161,32 @@ def download_demos(match_urls):
     Prevents duplicate download if demo id is already stored in the demo id file.
     '''
     # Checks if a folder for the event already exists, otherwise creates one
-    driver = init_driver(headless=False)
+    driver = init_driver(headless=True)
 
     downloaded_demo_ids = []
     if os.path.exists(DEMO_ID_FILE):
         logging.info(f"Demo ID file exists at [{DEMO_ID_FILE}], loading ")
-        with open(MATCH_URL_FILE, 'r') as f:
+        with open(DEMO_ID_FILE, 'r') as f:
             downloaded_demo_ids = json.load(f)
 
-    try:
-        for demo_id, url in match_urls.items():
-            if demo_id not in downloaded_demo_ids:
-                driver.get(url)
+    for demo_id, url in match_urls.items():
+        if demo_id not in downloaded_demo_ids:
+            driver.get(url)
 
-                # Finds the download demo button and extracts demo ID from URL
-                demo_button = driver.find_element_by_xpath(
-                    "//*[text() = 'GOTV Demo']")
-                demo_button.click()
+            # Finds the download demo button and extracts demo ID from URL
+            demo_button = driver.find_element_by_xpath(
+                "//*[text() = 'GOTV Demo']")
+            demo_button.click()
 
-                logging.info(f"Downloading DEMO_ID - {demo_id}")
-                download_wait(DEMO_DIR)
-                write_demo_id_to_file(demo_id)
-            else:
-                logging.info(
-                    f"DEMO_ID {demo_id} already downloaded - Skipping...")
-    except KeyboardInterrupt:
-        logging.info(f"Keyboard Interrupt Detected:")
-        driver.close()
-        with open(DEMO_ID_FILE, 'w') as f:
-            json.dump(downloaded_demo_ids, f, indent=2)
+            logging.info(f"Downloading DEMO_ID - {demo_id}")
+            download_wait(DATASET_DIR)
+            downloaded_demo_ids.append(demo_id)
+            with open(DEMO_ID_FILE, 'w') as f:
+                json.dump(downloaded_demo_ids, f, indent=2)
+        else:
+            logging.info(
+                f"DEMO_ID {demo_id} already downloaded - Skipping...")
+    logging.info("All match demos successfully downloaded")
 
 
 def download_wait(path_to_downloads):
@@ -201,6 +203,36 @@ def download_wait(path_to_downloads):
     logging.info("Download finished")
 
 
+def extract_demos():
+    logging.info("Extracting .rar files...")
+    if len(os.listdir(EXTRACTED_DIR)) != 0:
+        logging.info(
+            "Previously Extracted demos found. Please clear directory or continue.")
+    else:
+        for file in os.listdir(ARCHIVE_DIR):
+            if file.endswith(".rar"):
+                temp_dir = ARCHIVE_DIR + "\\" + file.split(".")[0]
+                os.mkdir(temp_dir)
+                patoolib.extract_archive(
+                    ARCHIVE_DIR + "\\" + file, outdir=temp_dir, verbosity=-1)
+                for file in os.listdir(temp_dir):
+                    file_name = file.replace(".dem", "")
+                    map_played = file_name.split("-")[-1]
+                    archive_name = temp_dir.split("\\")[-1]
+                    new_file_name = archive_name + "-" + map_played + ".dem"
+                    os.rename(temp_dir + "\\" + file,
+                              temp_dir + "\\" + new_file_name)
+
+                    if map_played.lower() == "mirage":
+                        os.replace(temp_dir + "\\" + new_file_name,
+                                   EXTRACTED_DIR + "\\" + new_file_name)
+                shutil.rmtree(temp_dir)
+
+                logging.info(f"Extraction of {file} Complete")
+        logging.info(f"Demo file extraction complete")
+
+
 results_urls = get_results_page_urls()
 match_urls = get_match_urls(results_urls)
 download_demos(match_urls)
+extract_demos()
