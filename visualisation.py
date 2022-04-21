@@ -4,6 +4,9 @@ from awpy.visualization.plot import plot_map, position_transform
 from awpy.data import MAP_DATA
 from configparser import ConfigParser
 from analysis import load_doorway_data
+import json
+import numpy as np
+import seaborn as sns
 
 # Read config.ini file
 config = ConfigParser()
@@ -13,8 +16,12 @@ demo_dir = config["Data"]["demo_directory"]
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = ['Helvetica']
 
+MAP_SCALE = MAP_DATA["de_mirage"]["scale"]
+DATASET_FILE = config["Data"]["demo_directory"] + "\\dataset.json"
+
 
 def plot_all_smokes(rounds, map_name, map_type="simpleradar", dark=True):
+    '''Simple function which plots all smokes thrown during a game on the minimap'''
     fig, a = plot_map(map_name=map_name, map_type=map_type, dark=dark)
     fig.set_size_inches(18.5, 10.5)
     smoke_r_scaled = config["Data"]["smoke_radius_units"] / \
@@ -34,6 +41,7 @@ def plot_all_smokes(rounds, map_name, map_type="simpleradar", dark=True):
 
 
 def draw_introduction_figures():
+    '''Generates the figures used in the introduction'''
     parser = DemoParser()
     inf_game = parser.read_json(
         json_path=demo_dir + "\\misc\\introduction_demos\\natus-vincere-vs-g2-m1-inferno.json")
@@ -49,14 +57,15 @@ def draw_introduction_figures():
 
 
 def transform(value, axis):
+    '''wrapper function to call the transform function from awpy with map set to mirage by default'''
     return position_transform("de_mirage", value, axis)
 
 
 def draw_doorway_image():
+    '''Draws figure to show location of manually collected doorways and their detection zones'''
     doorways = load_doorway_data()
     fig, a = plot_map(map_name="de_mirage", map_type="simpleradar")
     fig.set_size_inches(18.5, 10.5)
-    map_scale = MAP_DATA["de_mirage"]["scale"]
 
     # Two iterations to ensure draw order is correct for alpha when overlapping
     for doorway in doorways:
@@ -65,7 +74,7 @@ def draw_doorway_image():
         mp_y_scaled = transform(doorway.midpoint.y, "y")
 
         detection_r = config["Data"]["detection_radius_units"]
-        detection_r_scaled = int(detection_r) / map_scale
+        detection_r_scaled = int(detection_r) / MAP_SCALE
 
         a.add_artist(plt.Circle(
             (mp_x_scaled, mp_y_scaled), detection_r_scaled, alpha=0.15, color="white"))
@@ -95,6 +104,7 @@ def draw_doorway_image():
 
 
 def draw_representation_cases():
+    '''Draws Figure to show all cases possible in the 2D abstract representation'''
     plt.rcParams.update({'font.size': 16})
     fig, ((ax1, ax2, ax3), (ax4, ax5, ax6)) = plt.subplots(
         2, 3, sharex=True, sharey=True)
@@ -142,4 +152,25 @@ def draw_representation_cases():
     plt.show()
 
 
-draw_representation_cases()
+def dataset_heatmap():
+    with open(DATASET_FILE, 'r') as f:
+        smokes = json.load(f)
+
+    fig, a = plot_map(map_name="de_mirage", map_type="simpleradar")
+    # plt.show()
+
+    x = [transform(smoke["grenadeX"], "x") for smoke in smokes]
+    print(len(x))
+    y = [transform(smoke["grenadeY"], "y") for smoke in smokes]
+
+    heatmap = sns.kdeplot(x, y,
+                          levels=100,
+                          cmap="OrRd",
+                          alpha=0.75,
+                          shade=True,
+                          thresh=0.05,
+                          antialiased=True)
+    plt.show()
+
+
+dataset_heatmap()

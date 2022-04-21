@@ -169,6 +169,3 @@ def load_doorway_data():
                     y2=data["y2"],
                     z=data["z"]))
     return doorways
-
-
-draw_example()

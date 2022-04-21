@@ -33,7 +33,7 @@ def generate_dataset():
             stats["demoCount"] += 1
             stats["roundCount"] += num_rounds
             stats["smokeCount"] += len(smokes)
-            dataset.append(smokes)
+            dataset += smokes
 
     with open(DATASET_FILE, 'w') as f:
         json.dump(dataset, f, indent=2)
