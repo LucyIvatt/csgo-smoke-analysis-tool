@@ -68,6 +68,3 @@ def extract_smokes(demo_file):
                 entry["roundWon"] = True if r["winningSide"] == smoke["throwerSide"] else False
                 extracted_smokes.append(entry)
     return extracted_smokes, num_rounds
-
-
-generate_dataset()
