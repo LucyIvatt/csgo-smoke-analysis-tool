@@ -133,4 +133,4 @@ chromedriver.exe
 
 # Parsed Demos
 *.json
-!de_mirage_entrances.json
+!mirage_entrances.json
