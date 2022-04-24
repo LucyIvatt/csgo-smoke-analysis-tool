@@ -12,7 +12,9 @@ logging.basicConfig(level=logging.INFO, filename='logs//analysis.log',
 # Read config.ini file
 config = ConfigParser()
 config.read("config.ini")
+
 DATASET_FILE = config["Data"]["demo_directory"] + "\\dataset.json"
+PLAYER_WIDTH = 32
 
 
 def point_within_circle(point, circle_centre, radius):
@@ -115,8 +117,13 @@ class Doorway():
         self.name = name
         self.z = z
 
-        self.vector1 = Vector2(x1, y1)
-        self.vector2 = Vector2(x2, y2)
+        PLAYER_WIDTH = 32
+        dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
+            (PLAYER_WIDTH / 2)
+        dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
+            (PLAYER_WIDTH / 2)
+        self.vector1 = Vector2(x1-dx, y1-dy)
+        self.vector2 = Vector2(x2+dx, y2+dy)
 
         self.midpoint = Vector2((x1 + x2) / 2, (y1 + y2) / 2)
 
@@ -264,5 +271,5 @@ doorways = load_doorway_data()
 invalid_smokes = assign_doorways(smokes[:500], doorways)
 
 for doorway in doorways:
+    print(f"{doorway.name} - {doorway.in_game_draw_command()}")
     coverages = [smoke.coverage for smoke in doorway.smokes]
-    print(f"{doorway.name} - {coverages}")
