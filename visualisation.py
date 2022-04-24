@@ -157,19 +157,22 @@ def dataset_heatmap():
         smokes = json.load(f)
 
     fig, a = plot_map(map_name="de_mirage", map_type="simpleradar")
-    # plt.show()
+    fig.set_size_inches(15, 15)
 
     x = [transform(smoke["grenadeX"], "x") for smoke in smokes]
-    print(len(x))
     y = [transform(smoke["grenadeY"], "y") for smoke in smokes]
 
-    heatmap = sns.kdeplot(x, y,
-                          levels=100,
-                          cmap="OrRd",
+    # plt.scatter(x, y, s=0.5)
+
+    heatmap = sns.kdeplot(x=x, y=y,
+                          levels=25,
+                          cmap="rocket",
                           alpha=0.75,
                           shade=True,
                           thresh=0.05,
-                          antialiased=True)
+                          antialiased=True,
+                          cbar=True,
+                          bw_adjust=0.2)
     plt.show()
 
 
