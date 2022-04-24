@@ -157,7 +157,7 @@ def draw_example():
 
 
 def load_doorway_data():
-    entrances_file = open("de_mirage_entrances.json")
+    entrances_file = open("mirage_entrances.json")
     entrances_data = json.load(entrances_file)
     doorways = []
 
