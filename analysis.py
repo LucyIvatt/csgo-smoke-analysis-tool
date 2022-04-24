@@ -36,7 +36,7 @@ class Smoke():
         self.coverage = None
 
     def __str__(self):
-        return f"Smoke[(x, y, z) => ({self.vector.x}, {self.vector.y}, {self.z}) {self.coverage=}], [Doorway = {self.doorway}]"
+        return f"Smoke[(x, y, z) => ({self.vector.x}, {self.vector.y}, {self.z})]"
 
     def in_game_draw_command(self):
         return f"drawcross {self.vector.x} {self.vector.y} {self.z}"
@@ -51,7 +51,8 @@ class Smoke():
         return 0.01905 * dist_units if meters else dist_units
 
     def calculate_coverage(self):
-        logging.info(f"Calculating Coverage for {self}")
+        logging.info(
+            f"Calculating Coverage for {self} - {self.doorway}")
 
         # Checks if both coordinates are within the circle
         d1_in_smoke = self.point_in_smoke(self.doorway.vector1)
@@ -100,11 +101,13 @@ class Smoke():
                     self.coverage = (coverage_in_units /
                                      self.doorway.length) * 100
 
-                    logging.info("Points of intersection:")
-                    logging.info(f"Point 1: {point_1} t1: {t1}")
-                    logging.info(f"Point 2: {point_2} t2: {t2}")
-                    logging.info(f"Coverage in units: {coverage_in_units}")
-                    logging.info(f"Percentage coverage {self.coverage}")
+                    logging.debug("Points of intersection:")
+                    logging.debug(f"Point 1: {point_1} t1: {t1}")
+                    logging.debug(f"Point 2: {point_2} t2: {t2}")
+                    logging.debug(f"Coverage in units: {coverage_in_units}")
+
+                    logging.info(
+                        f"Doorway partially covered -  {self.coverage=}")
 
 
 class Doorway():
@@ -124,7 +127,7 @@ class Doorway():
         self.length = self.vector1.distance_to(self.vector2)
 
     def __str__(self):
-        return f"Doorway({self.name.capitalize()} -> (x1, y1)={self.vector1}, (x2_y2)={self.vector2}, (midx, midy)={self.midpoint}, z={self.z})"
+        return f"Doorway({self.name.capitalize()})"
 
     def in_game_draw_command(self):
         coord1_str = f"{self.vector1.x} {self.vector1.y} {self.z}"
@@ -132,17 +135,16 @@ class Doorway():
         return f"drawline {coord1_str} {coord2_str}"
 
     def smoke_in_target_range(self, smoke):
-        logging.info(f"Checking if {smoke} in range of {self.name}")
+        logging.debug(f"Checking if {smoke} in range of {self.name}")
         if point_within_circle(smoke.vector, self.midpoint, self.target_radius):
-            logging.info("Smoke within target radius, checking height...")
             if smoke.z >= self.z - self.z_tolerance and smoke.z <= self.z + self.z_tolerance:
-                logging.info("Smoke within valid height tolerance")
+                logging.debug("Smoke in target radius and height tolerance")
                 return True
             else:
-                logging.info(
-                    "Smoke not within valid height tolerance, skipping...")
+                logging.debug(
+                    "Smoke in target radius and but NOT height tolerance skipping...")
         else:
-            logging.info("Smoke not within target radius, skipping...")
+            logging.debug("Smoke NOT within target radius, skipping...")
         return False
 
 
@@ -199,7 +201,7 @@ def assign_doorways(smokes, doorways):
                 valid_doorways[0].smokes.append(smoke)
             else:
                 logging.info(
-                    f"{smoke} in range of multiple doorways, checking distance to doorway midpoints")
+                    f"{smoke} in range of multiple doorways, using distance to doorway midpoints")
                 distance_to_midpoints = [smoke.distance_from_midpoint(
                     doorway) for doorway in valid_doorways]
                 smoke.doorway = valid_doorways[np.argmin(
@@ -208,8 +210,6 @@ def assign_doorways(smokes, doorways):
                     distance_to_midpoints)].smokes.append(smoke)
 
             smoke.calculate_coverage()
-            logging.info(f"Calculated Coverage - {smoke.coverage}")
-
     return invalid_smokes
 
 
@@ -261,14 +261,8 @@ def draw_abstract_representation(doorway, smoke, plot_radius=False):
 
 smokes = load_smoke_data()
 doorways = load_doorway_data()
-invalid_smokes = assign_doorways(smokes[:100], doorways)
+invalid_smokes = assign_doorways(smokes[:500], doorways)
 
 for doorway in doorways:
     coverages = [smoke.coverage for smoke in doorway.smokes]
     print(f"{doorway.name} - {coverages}")
-
-print(doorways[0].smokes[-2])
-print(doorways[0].in_game_draw_command())
-print(doorways[0].smokes[-2].in_game_draw_command())
-draw_abstract_representation(
-    doorways[0], doorways[0].smokes[-2], plot_radius=False)
