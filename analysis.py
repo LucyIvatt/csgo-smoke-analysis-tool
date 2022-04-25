@@ -154,6 +154,14 @@ class Doorway():
             logging.debug("Smoke NOT within target radius, skipping...")
         return False
 
+    def coverage_stats(self):
+        coverage_vals = [smoke.coverage for smoke in self.smokes]
+
+        return {"min": np.min(coverage_vals),
+                "mean": np.mean(coverage_vals),
+                "median": np.median(coverage_vals),
+                "max": np.mean(coverage_vals)}
+
 
 def load_doorway_data():
     entrances_file = open("mirage_entrances.json")
@@ -268,8 +276,19 @@ def draw_abstract_representation(doorway, smoke, plot_radius=False):
 
 smokes = load_smoke_data()
 doorways = load_doorway_data()
-invalid_smokes = assign_doorways(smokes[:500], doorways)
+invalid_smokes = assign_doorways(smokes, doorways)
 
+count = 0
 for doorway in doorways:
-    print(f"{doorway.name} - {doorway.in_game_draw_command()}")
     coverages = [smoke.coverage for smoke in doorway.smokes]
+    count += len(coverages)
+print(count)
+
+doorway_names = []
+doorway_names = [doorway.name.replace("-", "\n") for doorway in doorways]
+
+mean_coverage = [doorway.coverage_stats()["mean"] for doorway in doorways]
+
+fig, ax = plt.subplots()
+ax.bar(doorway_names, mean_coverage)
+plt.show()
