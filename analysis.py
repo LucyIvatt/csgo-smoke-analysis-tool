@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from configparser import ConfigParser
 import math
 import logging
+from scipy import stats
 import numpy as np
 
 logging.basicConfig(level=logging.INFO, filename='logs//analysis.log',
@@ -200,14 +201,13 @@ def load_smoke_data():
 
 def assign_doorways(smokes, doorways):
     logging.info("Assigning Doorways...")
-    invalid_smokes = []
+    valid_smokes = []
     for smoke in smokes:
         valid_doorways = [
             doorway for doorway in doorways if doorway.smoke_in_target_range(smoke)]
         if len(valid_doorways) == 0:
             logging.info(
                 f"{smoke} is not in range of any common doorway, skipping...")
-            invalid_smokes.append(smoke)
         else:
             if len(valid_doorways) == 1:
                 logging.info(
@@ -225,7 +225,8 @@ def assign_doorways(smokes, doorways):
                     distance_to_midpoints)].smokes.append(smoke)
 
             smoke.calculate_coverage()
-    return invalid_smokes
+            valid_smokes.append(smoke)
+    return valid_smokes
 
 
 def draw_abstract_representation(doorway, smoke, plot_radius=False):
@@ -274,21 +275,29 @@ def draw_abstract_representation(doorway, smoke, plot_radius=False):
     plt.show()
 
 
+def stats_correlation(smokes):
+    coverages = [smoke.coverage for smoke in smokes]
+    round_outcomes = [smoke.round_won for smoke in smokes]
+
+    print(stats.pointbiserialr(round_outcomes, coverages))
+
+
 smokes = load_smoke_data()
 doorways = load_doorway_data()
-invalid_smokes = assign_doorways(smokes, doorways)
+valid_smokes = assign_doorways(smokes, doorways)
+stats_correlation(valid_smokes)
 
-count = 0
-for doorway in doorways:
-    coverages = [smoke.coverage for smoke in doorway.smokes]
-    count += len(coverages)
-print(count)
+# count = 0
+# for doorway in doorways:
+#     coverages = [smoke.coverage for smoke in doorway.smokes]
+#     count += len(coverages)
+# print(count)
 
-doorway_names = []
-doorway_names = [doorway.name.replace("-", "\n") for doorway in doorways]
+# doorway_names = []
+# doorway_names = [doorway.name.replace("-", "\n") for doorway in doorways]
 
-mean_coverage = [doorway.coverage_stats()["mean"] for doorway in doorways]
+# mean_coverage = [doorway.coverage_stats()["mean"] for doorway in doorways]
 
-fig, ax = plt.subplots()
-ax.bar(doorway_names, mean_coverage)
-plt.show()
+# fig, ax = plt.subplots()
+# ax.bar(doorway_names, mean_coverage)
+# plt.show()
