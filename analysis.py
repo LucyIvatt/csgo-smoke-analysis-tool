@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from configparser import ConfigParser
 import math
 import logging
-from scipy import stats
 import numpy as np
+from prettytable.colortable import ColorTable, Themes, Theme
+from collections import Counter
 
 logging.basicConfig(level=logging.INFO, filename='logs//analysis.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
@@ -15,6 +16,7 @@ config = ConfigParser()
 config.read("config.ini")
 
 DATASET_FILE = config["Data"]["demo_directory"] + "\\dataset.json"
+DATASET_STATS_FILE = config["Data"]["demo_directory"] + "\\dataset_stats.json"
 PLAYER_WIDTH = 32
 
 
@@ -229,75 +231,70 @@ def assign_doorways(smokes, doorways):
     return valid_smokes
 
 
-def draw_abstract_representation(doorway, smoke, plot_radius=False):
-    plt.rcParams.update({'font.size': 16})
-    plt.rcParams['font.family'] = 'sans-serif'
-    plt.rcParams['font.sans-serif'] = ['Helvetica']
-    fig1 = plt.figure()
-    fig1.set_size_inches(12, 12)
-    ax1 = fig1.add_subplot(111, aspect='equal')
+def print_stats(smokes, valid_smokes, doorways):
+    with open(DATASET_STATS_FILE, 'r') as f:
+        dataset_stats = json.load(f)
 
-    spacing = 6
+    GREEN = Theme(
+        default_color="92",
+        vertical_color="34",
+        horizontal_color="34",
+        junction_color="92",
+    )
 
-    # Plots the doorway
-    x_values = [doorway.vector1.x, doorway.vector2.x]
-    y_values = [doorway.vector1.y, doorway.vector2.y]
-    ax1.plot(x_values, y_values, 'bo', linestyle='dashed')
-    ax1.text(doorway.vector1.x + spacing, doorway.vector1.y,
-             f"D1\n({doorway.vector1.x}, {doorway.vector1.y})", horizontalalignment='left',
-             verticalalignment='center')
-    ax1.text(doorway.vector2.x + spacing, doorway.vector2.y,
-             f"D2\n({doorway.vector2.x}, {doorway.vector2.y})", horizontalalignment='left',
-             verticalalignment='center')
+    player_counts = Counter([smoke.thrower for smoke in smokes])
+    team_counts = Counter([smoke.team for smoke in smokes])
 
-    # Plots the radius line
-    if plot_radius:
-        x_values = [smoke.vector.x, smoke.vector.x-smoke.radius]
-        y_values = [smoke.vector.y, smoke.vector.y]
-        ax1.plot(x_values, y_values, marker="o",
-                 color='grey', linestyle="solid")
-        ax1.text(smoke.vector.x - smoke.radius/2, smoke.vector.y - spacing*2,
-                 f"Smoke radius\n({smoke.radius} units)", horizontalalignment='center',
-                 verticalalignment='center')
+    valid_player_counts = Counter([smoke.thrower for smoke in valid_smokes])
+    valid_team_counts = Counter([smoke.team for smoke in valid_smokes])
+    valid_sides = Counter([smoke.side for smoke in valid_smokes])
 
-    # Plots the smoke
-    plt.plot(smoke.vector.x, smoke.vector.y, marker="o", markersize=5, markeredgecolor="black",
-             markerfacecolor="black")
+    dataset_t = ColorTable(theme=Themes.OCEAN)
+    dataset_t.field_names = ["Demos", "Rounds",
+                             "Smokes", "Doorways", "Players", "Teams"]
+    dataset_t.add_row(
+        [dataset_stats["demoCount"], dataset_stats["roundCount"], dataset_stats["smokeCount"], len(doorways), len(player_counts.keys()), len(team_counts.keys())])
+    dataset_t.float_format = '.2'
+    print(dataset_t)
 
-    smoke_circle = plt.Circle(
-        (smoke.vector.x, smoke.vector.y), smoke.radius, alpha=1, color="black", linewidth=4, fill=False)
-    ax1.text(smoke.vector.x, smoke.vector.y+spacing*2, f"Smoke\n({smoke.vector.x}, {smoke.vector.y})", horizontalalignment='center',
-             verticalalignment='center')
+    total_smokes = f"{len(valid_smokes)} (T={valid_sides['T']}, CT={valid_sides['CT']})"
+    valid_t = ColorTable(theme=GREEN)
+    valid_t.field_names = ["Smokes", "Players", "Teams"]
+    valid_t.add_row([total_smokes, len(
+        valid_player_counts.keys()), len(valid_team_counts.keys())])
+    valid_t.float_format = '.2'
+    print(valid_t)
 
-    ax1.add_patch(smoke_circle)
-    ax1.autoscale_view()
+    overall_coverage_t = ColorTable(theme=Themes.OCEAN)
+    overall_coverage_t.field_names = ["Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
+    coverages = [smoke.coverage for smoke in valid_smokes]
+    overall_coverage_t.add_row([np.min(coverages), np.mean(
+        coverages), np.max(coverages), np.std(coverages)])
+    overall_coverage_t.float_format = '.2'
+    print(overall_coverage_t)
 
+    doorway_coverage_t = ColorTable(theme=GREEN)
+    doorway_coverage_t.field_names = [
+        "Doorway", "Frequency", "Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
+
+    for doorway in doorways:
+        doorway_coverages = [smoke.coverage for smoke in doorway.smokes]
+        doorway_coverage_t.add_row([doorway.name, len(doorway.smokes), np.min(doorway_coverages), np.mean(
+            doorway_coverages), np.max(doorway_coverages), np.std(doorway_coverages)])
+    doorway_coverage_t.float_format = '.2'
+    print(doorway_coverage_t)
+
+
+def mean_bar_charts(doorways):
+    doorway_names = [doorway.name.replace("-", "\n") for doorway in doorways]
+    mean_coverage = [doorway.coverage_stats()["mean"] for doorway in doorways]
+
+    fig, ax = plt.subplots()
+    ax.bar(doorway_names, mean_coverage)
     plt.show()
-
-
-def stats_correlation(smokes):
-    coverages = [smoke.coverage for smoke in smokes]
-    round_outcomes = [smoke.round_won for smoke in smokes]
-
-    print(stats.pointbiserialr(round_outcomes, coverages))
 
 
 smokes = load_smoke_data()
 doorways = load_doorway_data()
 valid_smokes = assign_doorways(smokes, doorways)
-stats_correlation(valid_smokes)
-
-# count = 0
-# for doorway in doorways:
-#     coverages = [smoke.coverage for smoke in doorway.smokes]
-#     count += len(coverages)
-# print(count)
-
-# doorway_names = []
-# doorway_names = [doorway.name.replace("-", "\n") for doorway in doorways]
-
-# mean_coverage = [doorway.coverage_stats()["mean"] for doorway in doorways]
-
-# fig, ax = plt.subplots()
-# ax.bar(doorway_names, mean_coverage)
-# plt.show()
+print_stats(smokes, valid_smokes, doorways)
