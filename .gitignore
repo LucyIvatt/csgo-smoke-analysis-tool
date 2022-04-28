@@ -134,3 +134,4 @@ chromedriver.exe
 # Parsed Demos
 *.json
 !mirage_entrances.json
+!dataset.json

@@ -13,14 +13,14 @@ HLTV_BASE_URL = "https://www.hltv.org/"
 
 # Reads config file to find directory of demo files
 config = ConfigParser()
-config.read("config.ini")
+config.read("data\\config.ini")
 
-DATASET_DIR = config["Data"]["demo_directory"]
+DEMO_DIR = config["Data"]["demo_directory"]
 
-ARCHIVE_DIR = DATASET_DIR + "\\archives"
-EXTRACTED_DIR = DATASET_DIR + "\\mirage_demos"
+ARCHIVE_DIR = DEMO_DIR + "\\archives"
+EXTRACTED_DIR = DEMO_DIR + "\\mirage_demos"
 
-METADATA_DIR = DATASET_DIR + "\\metadata"
+METADATA_DIR = DEMO_DIR + "\\metadata"
 DEMO_ID_FILE = METADATA_DIR + "\\saved_match_ids.json"
 RESULTS_URL_FILE = METADATA_DIR + "\\results_urls.json"
 MATCH_URL_FILE = METADATA_DIR + "\\match_urls.json"
@@ -179,7 +179,7 @@ def download_demos(match_urls):
             demo_button.click()
 
             logging.info(f"Downloading DEMO_ID - {demo_id}")
-            download_wait(DATASET_DIR)
+            download_wait(DEMO_DIR)
             downloaded_demo_ids.append(demo_id)
             with open(DEMO_ID_FILE, 'w') as f:
                 json.dump(downloaded_demo_ids, f, indent=2)

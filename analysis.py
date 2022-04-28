@@ -13,10 +13,12 @@ logging.basicConfig(level=logging.INFO, filename='logs//analysis.log',
 
 # Read config.ini file
 config = ConfigParser()
-config.read("config.ini")
+config.read("data\\config.ini")
 
-DATASET_FILE = config["Data"]["demo_directory"] + "\\dataset.json"
-DATASET_STATS_FILE = config["Data"]["demo_directory"] + "\\dataset_stats.json"
+DATASET_FILE = "data\\dataset.json"
+CONDENSED_DATASET_FILE = "data\\condensed_dataset.json"
+DOORWAY_FILE = "data\\mirage_entrances.json"
+
 PLAYER_WIDTH = 32
 
 GREEN_TABLE_THEME = Theme(
@@ -174,7 +176,7 @@ class Doorway():
 
 
 def load_doorway_data():
-    entrances_file = open("mirage_entrances.json")
+    entrances_file = open(DOORWAY_FILE)
     entrances_data = json.load(entrances_file)
     doorways = []
 
@@ -236,6 +238,7 @@ def assign_doorways(smokes, doorways):
 
             smoke.calculate_coverage()
             valid_smokes.append(smoke)
+
     return valid_smokes
 
 
@@ -254,7 +257,7 @@ def print_dataset_stats(dataset):
         game_smokes = [smoke for smoke in dataset if smoke.demo_id == demo_id]
         rounds += len(set(smoke.round_num for smoke in game_smokes))
 
-    table = ColorTable(theme=Themes.OCEAN)
+    table = ColorTable(theme=GREEN_TABLE_THEME)
     table.field_names = ["Demos", "Rounds",
                          "Smokes", "Players", "Teams"]
     table.add_row(
@@ -263,42 +266,25 @@ def print_dataset_stats(dataset):
     print(table)
 
 
-# def print_stats(smokes, valid_smokes, doorways):
+def print_coverage_stats(valid_smokes, doorways):
+    overall_table = ColorTable(theme=GREEN_TABLE_THEME)
+    overall_table.field_names = ["Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
+    coverages = [smoke.coverage for smoke in valid_smokes]
+    overall_table.add_row([np.min(coverages), np.mean(
+        coverages), np.max(coverages), np.std(coverages)])
+    overall_table.float_format = '.2'
+    print(overall_table)
 
-#     # Overall Dataset Statistics
+    doorway_table = ColorTable(theme=GREEN_TABLE_THEME)
+    doorway_table.field_names = [
+        "Doorway", "Frequency", "Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
 
-#     valid_player_counts = Counter([smoke.thrower for smoke in valid_smokes])
-#     valid_team_counts = Counter([smoke.team for smoke in valid_smokes])
-#     valid_sides = Counter([smoke.side for smoke in valid_smokes])
-#     valid_player_counts = Counter([smoke.thrower for smoke in valid_smokes])
-#     valid_team_counts = Counter([smoke.team for smoke in valid_smokes])
-#     valid_sides = Counter([smoke.sid_TABLE_THEMEe for smoke in valid_smokes])
-
-#     valid_t = ColorTable(theme=GREEN)
-#     valid_t.field_names = ["Smokes", "Players", "Teams"]
-#     valid_t.add_row([total_smokes, len(
-#         valid_player_counts.keys()), len(valid_team_counts.keys())])
-#     valid_t.float_format = '.2'
-#     print(valid_t)
-
-#     overall_coverage_t = ColorTable(theme=Themes.OCEAN)
-#     overall_coverage_t.field_names = ["Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
-#     coverages = [smoke.coverage for smoke in valid_smokes]
-#     overall_coverage_t.add_row([np.min(coverages), np.mean(
-#         coverages), np.max(coverages), np.std(coverages)])
-#     overall_coverage_t.float_format = '.2'_TABLE_THEME
-#     print(overall_coverage_t)
-
-#     doorway_coverage_t = ColorTable(theme=GREEN)
-#     doorway_coverage_t.field_names = [
-#         "Doorway", "Frequency", "Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
-
-#     for doorway in doorways:
-#         doorway_coverages = [smoke.coverage for smoke in doorway.smokes]
-#         doorway_coverage_t.add_row([doorway.name, len(doorway.smokes), np.min(doorway_coverages), np.mean(
-#             doorway_coverages), np.max(doorway_coverages), np.std(doorway_coverages)])
-#     doorway_coverage_t.float_format = '.2'
-#     print(doorway_coverage_t)
+    for doorway in doorways:
+        dw_cov = [smoke.coverage for smoke in doorway.smokes]
+        doorway_table.add_row([doorway.name, len(doorway.smokes), np.min(
+            dw_cov), np.mean(dw_cov), np.max(dw_cov), np.std(dw_cov)])
+    doorway_table.float_format = '.2'
+    print(doorway_table)
 
 
 def mean_bar_charts(doorways):
@@ -315,3 +301,4 @@ doorways = load_doorway_data()
 valid_smokes = assign_doorways(smokes, doorways)
 print_dataset_stats(smokes)
 print_dataset_stats(valid_smokes)
+print_coverage_stats(valid_smokes, doorways)

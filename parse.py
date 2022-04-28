@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, filename='logs//parser.log',
 
 # Read config.ini file
 config = ConfigParser()
-config.read("config.ini")
+config.read("data\\config.ini")
 
 DEMO_DIR = config["Data"]["demo_directory"] + "\\mirage_demos"
 DATASET_FILE = "data\\dataset.json"
