@@ -14,14 +14,11 @@ config = ConfigParser()
 config.read("config.ini")
 
 DEMO_DIR = config["Data"]["demo_directory"] + "\\mirage_demos"
-DATASET_FILE = config["Data"]["demo_directory"] + "\\dataset.json"
-DATASET_STATS_FILE = config["Data"]["demo_directory"] + "\\dataset_stats.json"
+DATASET_FILE = "data\\dataset.json"
 
 
 def generate_dataset():
     logging.info(f"Generating .json Dataset...")
-
-    stats = {"demoCount": 0, "roundCount": 0, "smokeCount": 0}
     dataset = []
 
     for file in os.listdir(DEMO_DIR):
@@ -29,17 +26,11 @@ def generate_dataset():
 
             logging.info(f"Extracting smokes from {file}")
 
-            smokes, num_rounds = extract_smokes(DEMO_DIR + "\\" + file)
-            stats["demoCount"] += 1
-            stats["roundCount"] += num_rounds
-            stats["smokeCount"] += len(smokes)
+            smokes = extract_smokes(DEMO_DIR + "\\" + file)
             dataset += smokes
 
     with open(DATASET_FILE, 'w') as f:
         json.dump(dataset, f, indent=2)
-
-    with open(DATASET_STATS_FILE, 'w') as f:
-        json.dump(stats, f, indent=2)
 
 
 def extract_smokes(demo_file):
@@ -48,15 +39,13 @@ def extract_smokes(demo_file):
         demofile=demo_file, demo_id=demo_id, parse_rate=128, outpath=DEMO_DIR)
     demo = demo_parser.parse()
     extracted_smokes = []
-    num_rounds = 0
     for r in demo["gameRounds"]:
         if not r["isWarmup"]:
-            num_rounds += 1
             smoke_grenades = [grenade for grenade in r["grenades"]
                               if grenade["grenadeType"] == "Smoke Grenade"]
-
             for smoke in smoke_grenades:
                 entry = {}
+                entry["demoID"] = demo_id
                 entry["throwerName"] = smoke["throwerName"]
                 entry["throwerTeam"] = smoke["throwerTeam"]
                 entry["throwerSide"] = smoke["throwerSide"]
@@ -67,4 +56,7 @@ def extract_smokes(demo_file):
                 entry["grenadeZ"] = smoke["grenadeZ"]
                 entry["roundWon"] = True if r["winningSide"] == smoke["throwerSide"] else False
                 extracted_smokes.append(entry)
-    return extracted_smokes, num_rounds
+    return extracted_smokes
+
+
+generate_dataset()

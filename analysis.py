@@ -19,13 +19,21 @@ DATASET_FILE = config["Data"]["demo_directory"] + "\\dataset.json"
 DATASET_STATS_FILE = config["Data"]["demo_directory"] + "\\dataset_stats.json"
 PLAYER_WIDTH = 32
 
+GREEN_TABLE_THEME = Theme(
+    default_color="92",
+    vertical_color="34",
+    horizontal_color="34",
+    junction_color="92",
+)
+
 
 def point_within_circle(point, circle_centre, radius):
     return (point.x - circle_centre.x)**2 + (point.y - circle_centre.y)**2 < radius**2
 
 
 class Smoke():
-    def __init__(self, thrower, team, side, round_num, time_thrown, round_won, x, y, z):
+    def __init__(self, demo_id, thrower, team, side, round_num, time_thrown, round_won, x, y, z):
+        self.demo_id = demo_id
         self.thrower = thrower
         self.team = team
         self.side = side
@@ -120,7 +128,6 @@ class Doorway():
         self.name = name
         self.z = z
 
-        PLAYER_WIDTH = 32
         dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
             (PLAYER_WIDTH / 2)
         dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
@@ -188,7 +195,8 @@ def load_smoke_data():
 
     smokes = []
     for s in dataset:
-        smokes.append(Smoke(s["throwerName"],
+        smokes.append(Smoke(s["demoID"],
+                            s["throwerName"],
                             s["throwerTeam"],
                             s["throwerSide"],
                             s["roundNum"],
@@ -231,58 +239,66 @@ def assign_doorways(smokes, doorways):
     return valid_smokes
 
 
-def print_stats(smokes, valid_smokes, doorways):
-    with open(DATASET_STATS_FILE, 'r') as f:
-        dataset_stats = json.load(f)
+def print_dataset_stats(dataset):
+    # Overall Dataset Statistics
+    sides = Counter([smoke.side for smoke in dataset])
+    demo_ids = set(smoke.demo_id for smoke in dataset)
 
-    GREEN = Theme(
-        default_color="92",
-        vertical_color="34",
-        horizontal_color="34",
-        junction_color="92",
-    )
+    demos = len(demo_ids)
+    smokes = f"{len(dataset)} (T={sides['T']}, CT={sides['CT']})"
+    players = len(Counter([smoke.thrower for smoke in dataset]))
+    teams = len(Counter([smoke.team for smoke in dataset]))
 
-    player_counts = Counter([smoke.thrower for smoke in smokes])
-    team_counts = Counter([smoke.team for smoke in smokes])
+    rounds = 0
+    for demo_id in demo_ids:
+        game_smokes = [smoke for smoke in dataset if smoke.demo_id == demo_id]
+        rounds += len(set(smoke.round_num for smoke in game_smokes))
 
-    valid_player_counts = Counter([smoke.thrower for smoke in valid_smokes])
-    valid_team_counts = Counter([smoke.team for smoke in valid_smokes])
-    valid_sides = Counter([smoke.side for smoke in valid_smokes])
+    table = ColorTable(theme=Themes.OCEAN)
+    table.field_names = ["Demos", "Rounds",
+                         "Smokes", "Players", "Teams"]
+    table.add_row(
+        [demos, rounds, smokes, players, teams])
+    table.float_format = '.2'
+    print(table)
 
-    dataset_t = ColorTable(theme=Themes.OCEAN)
-    dataset_t.field_names = ["Demos", "Rounds",
-                             "Smokes", "Doorways", "Players", "Teams"]
-    dataset_t.add_row(
-        [dataset_stats["demoCount"], dataset_stats["roundCount"], dataset_stats["smokeCount"], len(doorways), len(player_counts.keys()), len(team_counts.keys())])
-    dataset_t.float_format = '.2'
-    print(dataset_t)
 
-    total_smokes = f"{len(valid_smokes)} (T={valid_sides['T']}, CT={valid_sides['CT']})"
-    valid_t = ColorTable(theme=GREEN)
-    valid_t.field_names = ["Smokes", "Players", "Teams"]
-    valid_t.add_row([total_smokes, len(
-        valid_player_counts.keys()), len(valid_team_counts.keys())])
-    valid_t.float_format = '.2'
-    print(valid_t)
+# def print_stats(smokes, valid_smokes, doorways):
 
-    overall_coverage_t = ColorTable(theme=Themes.OCEAN)
-    overall_coverage_t.field_names = ["Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
-    coverages = [smoke.coverage for smoke in valid_smokes]
-    overall_coverage_t.add_row([np.min(coverages), np.mean(
-        coverages), np.max(coverages), np.std(coverages)])
-    overall_coverage_t.float_format = '.2'
-    print(overall_coverage_t)
+#     # Overall Dataset Statistics
 
-    doorway_coverage_t = ColorTable(theme=GREEN)
-    doorway_coverage_t.field_names = [
-        "Doorway", "Frequency", "Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
+#     valid_player_counts = Counter([smoke.thrower for smoke in valid_smokes])
+#     valid_team_counts = Counter([smoke.team for smoke in valid_smokes])
+#     valid_sides = Counter([smoke.side for smoke in valid_smokes])
+#     valid_player_counts = Counter([smoke.thrower for smoke in valid_smokes])
+#     valid_team_counts = Counter([smoke.team for smoke in valid_smokes])
+#     valid_sides = Counter([smoke.sid_TABLE_THEMEe for smoke in valid_smokes])
 
-    for doorway in doorways:
-        doorway_coverages = [smoke.coverage for smoke in doorway.smokes]
-        doorway_coverage_t.add_row([doorway.name, len(doorway.smokes), np.min(doorway_coverages), np.mean(
-            doorway_coverages), np.max(doorway_coverages), np.std(doorway_coverages)])
-    doorway_coverage_t.float_format = '.2'
-    print(doorway_coverage_t)
+#     valid_t = ColorTable(theme=GREEN)
+#     valid_t.field_names = ["Smokes", "Players", "Teams"]
+#     valid_t.add_row([total_smokes, len(
+#         valid_player_counts.keys()), len(valid_team_counts.keys())])
+#     valid_t.float_format = '.2'
+#     print(valid_t)
+
+#     overall_coverage_t = ColorTable(theme=Themes.OCEAN)
+#     overall_coverage_t.field_names = ["Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
+#     coverages = [smoke.coverage for smoke in valid_smokes]
+#     overall_coverage_t.add_row([np.min(coverages), np.mean(
+#         coverages), np.max(coverages), np.std(coverages)])
+#     overall_coverage_t.float_format = '.2'_TABLE_THEME
+#     print(overall_coverage_t)
+
+#     doorway_coverage_t = ColorTable(theme=GREEN)
+#     doorway_coverage_t.field_names = [
+#         "Doorway", "Frequency", "Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
+
+#     for doorway in doorways:
+#         doorway_coverages = [smoke.coverage for smoke in doorway.smokes]
+#         doorway_coverage_t.add_row([doorway.name, len(doorway.smokes), np.min(doorway_coverages), np.mean(
+#             doorway_coverages), np.max(doorway_coverages), np.std(doorway_coverages)])
+#     doorway_coverage_t.float_format = '.2'
+#     print(doorway_coverage_t)
 
 
 def mean_bar_charts(doorways):
@@ -297,4 +313,5 @@ def mean_bar_charts(doorways):
 smokes = load_smoke_data()
 doorways = load_doorway_data()
 valid_smokes = assign_doorways(smokes, doorways)
-print_stats(smokes, valid_smokes, doorways)
+print_dataset_stats(smokes)
+print_dataset_stats(valid_smokes)
