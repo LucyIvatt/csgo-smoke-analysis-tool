@@ -294,11 +294,3 @@ def mean_bar_charts(doorways):
     fig, ax = plt.subplots()
     ax.bar(doorway_names, mean_coverage)
     plt.show()
-
-
-smokes = load_smoke_data()
-doorways = load_doorway_data()
-valid_smokes = assign_doorways(smokes, doorways)
-print_dataset_stats(smokes)
-print_dataset_stats(valid_smokes)
-print_coverage_stats(valid_smokes, doorways)
