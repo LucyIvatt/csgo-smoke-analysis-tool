@@ -142,6 +142,7 @@ class Doorway():
         self.target_radius = int(config["Data"]["detection_radius_units"])
         self.z_tolerance = int(config["Data"]["height_tolerance_units"])
         self.smokes = []
+        self.length = self.vector1.distance_to(self.vector2)
 
         self.length = self.vector1.distance_to(self.vector2)
 
@@ -240,57 +241,3 @@ def assign_doorways(smokes, doorways):
             valid_smokes.append(smoke)
 
     return valid_smokes
-
-
-def print_dataset_stats(dataset):
-    # Overall Dataset Statistics
-    sides = Counter([smoke.side for smoke in dataset])
-    demo_ids = set(smoke.demo_id for smoke in dataset)
-
-    demos = len(demo_ids)
-    smokes = f"{len(dataset)} (T={sides['T']}, CT={sides['CT']})"
-    players = len(Counter([smoke.thrower for smoke in dataset]))
-    teams = len(Counter([smoke.team for smoke in dataset]))
-
-    rounds = 0
-    for demo_id in demo_ids:
-        game_smokes = [smoke for smoke in dataset if smoke.demo_id == demo_id]
-        rounds += len(set(smoke.round_num for smoke in game_smokes))
-
-    table = ColorTable(theme=GREEN_TABLE_THEME)
-    table.field_names = ["Demos", "Rounds",
-                         "Smokes", "Players", "Teams"]
-    table.add_row(
-        [demos, rounds, smokes, players, teams])
-    table.float_format = '.2'
-    print(table)
-
-
-def print_coverage_stats(valid_smokes, doorways):
-    overall_table = ColorTable(theme=GREEN_TABLE_THEME)
-    overall_table.field_names = ["Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
-    coverages = [smoke.coverage for smoke in valid_smokes]
-    overall_table.add_row([np.min(coverages), np.mean(
-        coverages), np.max(coverages), np.std(coverages)])
-    overall_table.float_format = '.2'
-    print(overall_table)
-
-    doorway_table = ColorTable(theme=GREEN_TABLE_THEME)
-    doorway_table.field_names = [
-        "Doorway", "Frequency", "Min(%)", "Mean(%)", "Max(%)", "Std(%)"]
-
-    for doorway in doorways:
-        dw_cov = [smoke.coverage for smoke in doorway.smokes]
-        doorway_table.add_row([doorway.name, len(doorway.smokes), np.min(
-            dw_cov), np.mean(dw_cov), np.max(dw_cov), np.std(dw_cov)])
-    doorway_table.float_format = '.2'
-    print(doorway_table)
-
-
-def mean_bar_charts(doorways):
-    doorway_names = [doorway.name.replace("-", "\n") for doorway in doorways]
-    mean_coverage = [doorway.coverage_stats()["mean"] for doorway in doorways]
-
-    fig, ax = plt.subplots()
-    ax.bar(doorway_names, mean_coverage)
-    plt.show()
