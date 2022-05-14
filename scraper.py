@@ -232,7 +232,7 @@ def extract_demos():
         logging.info(f"Demo file extraction complete")
 
 
-results_urls = get_results_page_urls()
-match_urls = get_match_urls(results_urls)
-download_demos(match_urls)
-extract_demos()
+# results_urls = get_results_page_urls()
+# match_urls = get_match_urls(results_urls)
+# download_demos(match_urls)
+# extract_demos()
