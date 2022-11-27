@@ -232,7 +232,6 @@ def load_smoke_data():
 def assign_doorways(smokes, doorways):
     """Iterates through all of the smokes, assigns them to their doorway (or discards them), 
     then calculates the coverage.
-
     """
     logging.info("Assigning Doorways...")
 
