@@ -68,7 +68,7 @@ class Smoke():
         """
         logging.info(f"Calculating Coverage for {self} - {self.doorway}")
 
-        # Checks if both coordinates are within the circle - Case 1
+        # Case 1: Checks if both coordinates are within the circle
         d1_in_smoke = self.doorway_coord_in_smoke(self.doorway.vector1)
         d2_in_smoke = self.doorway_coord_in_smoke(self.doorway.vector2)
         if d1_in_smoke and d2_in_smoke:
@@ -135,15 +135,19 @@ class Smoke():
 
 
 class Doorway():
-    def __init__(self, name, x1, y1, x2, y2, z):
+    def __init__(self, name, x1, y1, x2, y2, z, adjust_pw=True):
         self.name = name
         self.z = z
 
         # Adds (or minuses) half a player width to each of the doorway coordinates
-        dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
-        dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
-        self.vector1 = Vector2(x1-dx, y1-dy)
-        self.vector2 = Vector2(x2+dx, y2+dy)
+        if adjust_pw:
+            dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
+            dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
+            self.vector1 = Vector2(x1-dx, y1-dy)
+            self.vector2 = Vector2(x2+dx, y2+dy)
+        else:
+            self.vector1 = Vector2(x1, y1)
+            self.vector2 = Vector2(x2, y2)
 
         self.midpoint = Vector2((x1 + x2) / 2, (y1 + y2) / 2)
         self.target_radius = int(CONFIG["Data"]["detection_radius_units"])
