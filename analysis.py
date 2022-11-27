@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO, filename='logs//analysis.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 # Read config.ini file and defines save locations.
-config = ConfigParser()
-config.read("data\\config.ini")
+CONFIG = ConfigParser()
+CONFIG.read("data\\config.ini")
 DATASET_FILE = "data\\dataset.json"
 CONDENSED_DATASET_FILE = "data\\condensed_dataset.json"
 DOORWAY_FILE = "data\\mirage_entrances.json"
@@ -38,7 +38,7 @@ class Smoke():
 
         self.vector = Vector2(x, y)
         self.z = z
-        self.radius = int(config["Data"]["smoke_radius_units"])
+        self.radius = int(CONFIG["Data"]["smoke_radius_units"])
 
         self.doorway = None
         self.coverage = None
@@ -66,8 +66,7 @@ class Smoke():
     def calculate_coverage(self):
         """Calculates the percentage coverage for the smoke and its assigned doorway.
         """
-        logging.info(
-            f"Calculating Coverage for {self} - {self.doorway}")
+        logging.info(f"Calculating Coverage for {self} - {self.doorway}")
 
         # Checks if both coordinates are within the circle - Case 1
         d1_in_smoke = self.doorway_coord_in_smoke(self.doorway.vector1)
@@ -90,8 +89,7 @@ class Smoke():
         disc = b**2 - 4 * a * c
         if disc < 0:
             self.coverage = 0
-            logging.info(
-                f"Smoke doesn't intersect doorway - {self.coverage=}")
+            logging.info(f"Smoke doesn't intersect doorway - {self.coverage=}")
             return
 
         sqrt_disc = math.sqrt(disc)
@@ -101,15 +99,13 @@ class Smoke():
         # If either solution for t is is not between 0 and 1, no collision - Case 3
         if not (0 <= t1 <= 1 or 0 <= t2 <= 1):
             self.coverage = 0
-            logging.info(
-                f"Smoke does not intersect the doorway at any point (would if doorway extended)")
+            logging.info(f"Smoke does not intersect the doorway at any point (would if doorway extended)")
             return
 
         # Case 4: If both solutions are equal, doorway is a tangent to the smoke
         elif t1 == t2:
             self.coverage = 0
-            logging.info(
-                f"Doorway is at a tangent to the smoke grenade - {self.coverage=}")
+            logging.info(f"Doorway is at a tangent to the smoke grenade - {self.coverage=}")
             return
 
         # Points of intersection
@@ -128,8 +124,7 @@ class Smoke():
 
         # Calculate the coverage in units for the smoke and percentage
         coverage_in_units = point_1.distance_to(point_2)
-        self.coverage = (coverage_in_units /
-                         self.doorway.length) * 100
+        self.coverage = (coverage_in_units / self.doorway.length) * 100
 
         logging.debug("Points of intersection:")
         logging.debug(f"Point 1: {point_1} t1: {t1}")
@@ -145,16 +140,14 @@ class Doorway():
         self.z = z
 
         # Adds (or minuses) half a player width to each of the doorway coordinates
-        dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
-            (PLAYER_WIDTH / 2)
-        dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
-            (PLAYER_WIDTH / 2)
+        dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
+        dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
         self.vector1 = Vector2(x1-dx, y1-dy)
         self.vector2 = Vector2(x2+dx, y2+dy)
 
         self.midpoint = Vector2((x1 + x2) / 2, (y1 + y2) / 2)
-        self.target_radius = int(config["Data"]["detection_radius_units"])
-        self.z_tolerance = int(config["Data"]["height_tolerance_units"])
+        self.target_radius = int(CONFIG["Data"]["detection_radius_units"])
+        self.z_tolerance = int(CONFIG["Data"]["height_tolerance_units"])
         self.smokes = []
         self.length = self.vector1.distance_to(self.vector2)
 
@@ -174,13 +167,14 @@ class Doorway():
         provided in the configuration file.
         """
         logging.debug(f"Checking if {smoke} in range of {self.name}")
+
         if point_within_circle(smoke.vector, self.midpoint, self.target_radius):
             if smoke.z >= self.z - self.z_tolerance and smoke.z <= self.z + self.z_tolerance:
                 logging.debug("Smoke in target radius and height tolerance")
                 return True
             else:
-                logging.debug(
-                    "Smoke in target radius and but NOT height tolerance skipping...")
+                logging.debug("Smoke in target radius and but NOT height tolerance skipping...")
+
         else:
             logging.debug("Smoke NOT within target radius, skipping...")
         return False
@@ -189,7 +183,6 @@ class Doorway():
         """Provides basic statistics about the coverage for the smokes assigned to the doorway.
         """
         coverage_vals = [smoke.coverage for smoke in self.smokes]
-
         return {"min": np.min(coverage_vals),
                 "mean": np.mean(coverage_vals),
                 "median": np.median(coverage_vals),
@@ -242,30 +235,26 @@ def assign_doorways(smokes, doorways):
 
     """
     logging.info("Assigning Doorways...")
+
     valid_smokes = []
+
     for smoke in smokes:
         valid_doorways = [
             doorway for doorway in doorways if doorway.smoke_in_target_range(smoke)]
         if len(valid_doorways) == 0:
-            logging.info(
-                f"{smoke} is not in range of any common doorway, skipping...")
+            logging.info(f"{smoke} is not in range of any common doorway, skipping...")
+            continue
+        elif len(valid_doorways) == 1:
+            logging.info(f"{smoke} in target zone of {valid_doorways[0].name}...")
+            smoke.doorway = valid_doorways[0]
+            valid_doorways[0].smokes.append(smoke)
         else:
-            if len(valid_doorways) == 1:
-                logging.info(
-                    f"{smoke} in target zone of {valid_doorways[0].name}...")
-                smoke.doorway = valid_doorways[0]
-                valid_doorways[0].smokes.append(smoke)
-            else:
-                logging.info(
-                    f"{smoke} in range of multiple doorways, using distance to doorway midpoints")
-                distance_to_midpoints = [smoke.distance_from_midpoint(
-                    doorway) for doorway in valid_doorways]
-                smoke.doorway = valid_doorways[np.argmin(
-                    distance_to_midpoints)]
-                valid_doorways[np.argmin(
-                    distance_to_midpoints)].smokes.append(smoke)
+            logging.info(f"{smoke} in range of multiple doorways, using distance to doorway midpoints")
+            dist_to_mid = [smoke.distance_from_midpoint(doorway) for doorway in valid_doorways]
+            smoke.doorway = valid_doorways[np.argmin(dist_to_mid)]
+            valid_doorways[np.argmin(dist_to_mid)].smokes.append(smoke)
 
-            smoke.calculate_coverage()
-            valid_smokes.append(smoke)
+        smoke.calculate_coverage()
+        valid_smokes.append(smoke)
 
     return valid_smokes
