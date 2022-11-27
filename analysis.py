@@ -1,3 +1,7 @@
+# Hides pygame welcome message
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"  # noqa: E402
+
 import json
 from pygame.math import Vector2
 from configparser import ConfigParser
@@ -99,13 +103,15 @@ class Smoke():
         # If either solution for t is is not between 0 and 1, no collision - Case 3
         if not (0 <= t1 <= 1 or 0 <= t2 <= 1):
             self.coverage = 0
-            logging.info(f"Smoke does not intersect the doorway at any point (would if doorway extended)")
+            logging.info(
+                f"Smoke does not intersect the doorway at any point (would if doorway extended)")
             return
 
         # Case 4: If both solutions are equal, doorway is a tangent to the smoke
         elif t1 == t2:
             self.coverage = 0
-            logging.info(f"Doorway is at a tangent to the smoke grenade - {self.coverage=}")
+            logging.info(
+                f"Doorway is at a tangent to the smoke grenade - {self.coverage=}")
             return
 
         # Points of intersection
@@ -141,8 +147,10 @@ class Doorway():
 
         # Adds (or minuses) half a player width to each of the doorway coordinates
         if adjust_pw:
-            dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
-            dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * (PLAYER_WIDTH / 2)
+            dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
+                (PLAYER_WIDTH / 2)
+            dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
+                (PLAYER_WIDTH / 2)
             self.vector1 = Vector2(x1-dx, y1-dy)
             self.vector2 = Vector2(x2+dx, y2+dy)
         else:
@@ -177,7 +185,8 @@ class Doorway():
                 logging.debug("Smoke in target radius and height tolerance")
                 return True
             else:
-                logging.debug("Smoke in target radius and but NOT height tolerance skipping...")
+                logging.debug(
+                    "Smoke in target radius and but NOT height tolerance skipping...")
 
         else:
             logging.debug("Smoke NOT within target radius, skipping...")
@@ -245,15 +254,19 @@ def assign_doorways(smokes, doorways):
         valid_doorways = [
             doorway for doorway in doorways if doorway.smoke_in_target_range(smoke)]
         if len(valid_doorways) == 0:
-            logging.info(f"{smoke} is not in range of any common doorway, skipping...")
+            logging.info(
+                f"{smoke} is not in range of any common doorway, skipping...")
             continue
         elif len(valid_doorways) == 1:
-            logging.info(f"{smoke} in target zone of {valid_doorways[0].name}...")
+            logging.info(
+                f"{smoke} in target zone of {valid_doorways[0].name}...")
             smoke.doorway = valid_doorways[0]
             valid_doorways[0].smokes.append(smoke)
         else:
-            logging.info(f"{smoke} in range of multiple doorways, using distance to doorway midpoints")
-            dist_to_mid = [smoke.distance_from_midpoint(doorway) for doorway in valid_doorways]
+            logging.info(
+                f"{smoke} in range of multiple doorways, using distance to doorway midpoints")
+            dist_to_mid = [smoke.distance_from_midpoint(
+                doorway) for doorway in valid_doorways]
             smoke.doorway = valid_doorways[np.argmin(dist_to_mid)]
             valid_doorways[np.argmin(dist_to_mid)].smokes.append(smoke)
 

@@ -34,7 +34,7 @@ class TestSmokeCoverage(unittest.TestCase):
         smoke.calculate_coverage()
         return smoke
 
-    def test_case1_fully_covered(self):
+    def test_case_1_fully_covered(self):
         """Case1: Tests the case where the doorway completely inside of the smoke
         """
         s = (200, 200, 0)
@@ -43,7 +43,7 @@ class TestSmokeCoverage(unittest.TestCase):
         smoke = self.setup(s, d1, d2)
         self.assertEqual(smoke.coverage, 100)
 
-    def test_case2_no_collision(self):
+    def test_case_2_no_collision(self):
         """Case 2: Test the case where the doorway is completely outside of the smoke.
         Line would NOT intersect the circle at any point if it was extended to infinity
         """
@@ -53,7 +53,7 @@ class TestSmokeCoverage(unittest.TestCase):
         smoke = self.setup(s, d1, d2)
         self.assertEqual(smoke.coverage, 0)
 
-    def test_case3_no_collision_unless_extended(self):
+    def test_case_3_no_collision_unless_extended(self):
         """Case 3: Test the case where the doorway is completely outside of the smoke.
         Line WOULD intersect the circle if it was extended to infinity
         """
@@ -63,7 +63,7 @@ class TestSmokeCoverage(unittest.TestCase):
         smoke = self.setup(s, d1, d2)
         self.assertEqual(smoke.coverage, 0)
 
-    def test_case4_tangent(self):
+    def test_case_4_tangent(self):
         """Case 4: Doorway is at a tangent to the smoke
         """
         s = (200, 200, 0)
@@ -72,7 +72,7 @@ class TestSmokeCoverage(unittest.TestCase):
         smoke = self.setup(s, d1, d2)
         self.assertEqual(smoke.coverage, 0)
 
-    def test_case5_collision_double_gap(self):
+    def test_case_5_collision_double_gap(self):
         """Case 5: The doorway collides with the smoke. There are gaps on either side of the smoke i.e. neither
         of the doorway coordinates are within the smoke.
 
@@ -89,7 +89,7 @@ class TestSmokeCoverage(unittest.TestCase):
         measured_coverage = (coverage_measured_length / doorway_measured_length)*100
         self.assertAlmostEqual(smoke.coverage, measured_coverage, delta=2)
 
-    def test_case6_collision_single_gap(self):
+    def test_case_6_collision_single_gap(self):
         """Case 6: The doorway collides with the smoke. There is one gap on the side of the smoke and one doorway
         coordinate within the smoke.
 
