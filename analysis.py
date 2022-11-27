@@ -274,3 +274,8 @@ def assign_doorways(smokes, doorways):
         valid_smokes.append(smoke)
 
     return valid_smokes
+
+# smokes = load_smoke_data()
+# doorways = load_doorway_data()
+# valid_smokes = assign_doorways(smokes, doorways)
+# coverages = [smoke.coverage for smoke in valid_smokes]
