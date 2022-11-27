@@ -1,35 +1,28 @@
 import json
 from pygame.math import Vector2
-import matplotlib.pyplot as plt
 from configparser import ConfigParser
 import math
 import logging
 import numpy as np
-from prettytable.colortable import ColorTable, Themes, Theme
-from collections import Counter
 
 logging.basicConfig(level=logging.INFO, filename='logs//analysis.log',
                     filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
-# Read config.ini file
+# Read config.ini file and defines save locations.
 config = ConfigParser()
 config.read("data\\config.ini")
-
 DATASET_FILE = "data\\dataset.json"
 CONDENSED_DATASET_FILE = "data\\condensed_dataset.json"
 DOORWAY_FILE = "data\\mirage_entrances.json"
 
+# Retrieved from Valve developer wiki
 PLAYER_WIDTH = 32
-
-GREEN_TABLE_THEME = Theme(
-    default_color="92",
-    vertical_color="34",
-    horizontal_color="34",
-    junction_color="92",
-)
+UNIT_METER_CONVERSION = 0.01905
 
 
-def point_within_circle(point, circle_centre, radius):
+def point_within_circle(point: Vector2, circle_centre: Vector2, radius: int) -> bool:
+    """Checks if a point is located within a circles area.
+    """
     return (point.x - circle_centre.x)**2 + (point.y - circle_centre.y)**2 < radius**2
 
 
@@ -53,76 +46,97 @@ class Smoke():
     def __str__(self):
         return f"Smoke[(x, y, z) => ({self.vector.x}, {self.vector.y}, {self.z})]"
 
-    def in_game_draw_command(self):
+    def in_game_draw_command(self) -> str:
+        """Generates a command that can be passed into the CS:GO developer console to draw an in-game cross at the 
+        location the smoke landed at.
+        """
         return f"drawcross {self.vector.x} {self.vector.y} {self.z}"
 
-    def point_in_smoke(self, p):
-        '''Used to determine check if doorway end points are within the smoke.'''
+    def doorway_coord_in_smoke(self, p: Vector2) -> bool:
+        """Checks if the doorway coordinate is within the smoke. Simple wrapper for point_within_circle() function."""
         return point_within_circle(p, self.vector, self.radius)
 
-    def distance_from_midpoint(self, doorway, meters=False):
-        '''Finds distances between smoke and doorway midpoints when target radii overlap'''
+    def distance_from_midpoint(self, doorway, meters: bool = False) -> float:
+        """Checks what the distance is from the smokes midpoint to a doorways midpoint. Can return this in either
+        game units or metres.
+        """
         dist_units = self.vector.distance_to(doorway.midpoint)
-        return 0.01905 * dist_units if meters else dist_units
+        return UNIT_METER_CONVERSION * dist_units if meters else dist_units
 
     def calculate_coverage(self):
+        """Calculates the percentage coverage for the smoke and its assigned doorway.
+        """
         logging.info(
             f"Calculating Coverage for {self} - {self.doorway}")
 
-        # Checks if both coordinates are within the circle
-        d1_in_smoke = self.point_in_smoke(self.doorway.vector1)
-        d2_in_smoke = self.point_in_smoke(self.doorway.vector2)
-
+        # Checks if both coordinates are within the circle - Case 1
+        d1_in_smoke = self.doorway_coord_in_smoke(self.doorway.vector1)
+        d2_in_smoke = self.doorway_coord_in_smoke(self.doorway.vector2)
         if d1_in_smoke and d2_in_smoke:
             self.coverage = 100
             logging.info(f"Doorway entirely within smoke - {self.coverage=}")
-        else:
-            # Coefficients
-            V = self.doorway.vector2-self.doorway.vector1
-            a = V.dot(V)
-            b = 2 * V.dot(self.doorway.vector1 - self.vector)
-            c = self.doorway.vector1.dot(self.doorway.vector1) + self.vector.dot(self.vector) - \
-                2 * self.doorway.vector1.dot(self.vector) - self.radius**2
+            return
 
-            # Discriminant
-            disc = b**2 - 4 * a * c
-            if disc < 0:
-                self.coverage = 0
-                logging.info(
-                    f"Smoke doesn't intersect doorway - {self.coverage=}")
-            else:
-                sqrt_disc = math.sqrt(disc)
-                t1 = (-b + sqrt_disc) / (2 * a)
-                t2 = (-b - sqrt_disc) / (2 * a)
+        # Defining the quadratic equation shown by Formulas 5.7-5.10 under '5.5.3 Calculating Coverage'
+        # Coefficients
+        V = self.doorway.vector2-self.doorway.vector1
+        a = V.dot(V)
+        b = 2 * V.dot(self.doorway.vector1 - self.vector)
+        c = self.doorway.vector1.dot(self.doorway.vector1) + self.vector.dot(self.vector) - \
+            2 * self.doorway.vector1.dot(self.vector) - self.radius**2
 
-                if not (0 <= t1 <= 1 or 0 <= t2 <= 1):
-                    self.coverage = 0
-                    logging.info(
-                        f"Smoke does not intersect the doorway at any point (would if doorway extended) ")
-                elif t1 == t2:
-                    self.coverage = 0
-                    logging.info(
-                        f"Doorway is at a tangent to the smoke grenade - {self.coverage=}")
-                else:
-                    point_1 = self.doorway.vector1 + t1 * V
-                    point_2 = self.doorway.vector1 + t2 * V
+        # Discriminant
+        # Case 2: If the discriminant is less than 0 there is no collision
+        disc = b**2 - 4 * a * c
+        if disc < 0:
+            self.coverage = 0
+            logging.info(
+                f"Smoke doesn't intersect doorway - {self.coverage=}")
+            return
 
-                    if 0 <= t1 <= 1 and not 0 <= t2 <= 1:
-                        point_2 = self.doorway.vector1 if d1_in_smoke else self.doorway.vector2
-                    elif not 0 <= t1 <= 1 and 0 <= t2 <= 1:
-                        point_1 = self.doorway.vector1 if d1_in_smoke else self.doorway.vector2
+        sqrt_disc = math.sqrt(disc)
+        t1 = (-b + sqrt_disc) / (2 * a)
+        t2 = (-b - sqrt_disc) / (2 * a)
 
-                    coverage_in_units = point_1.distance_to(point_2)
-                    self.coverage = (coverage_in_units /
-                                     self.doorway.length) * 100
+        # If either solution for t is is not between 0 and 1, no collision - Case 3
+        if not (0 <= t1 <= 1 or 0 <= t2 <= 1):
+            self.coverage = 0
+            logging.info(
+                f"Smoke does not intersect the doorway at any point (would if doorway extended)")
+            return
 
-                    logging.debug("Points of intersection:")
-                    logging.debug(f"Point 1: {point_1} t1: {t1}")
-                    logging.debug(f"Point 2: {point_2} t2: {t2}")
-                    logging.debug(f"Coverage in units: {coverage_in_units}")
+        # Case 4: If both solutions are equal, doorway is a tangent to the smoke
+        elif t1 == t2:
+            self.coverage = 0
+            logging.info(
+                f"Doorway is at a tangent to the smoke grenade - {self.coverage=}")
+            return
 
-                    logging.info(
-                        f"Doorway partially covered -  {self.coverage=}")
+        # Points of intersection
+        # Case 5: There is a gap on both sides of the smoke so the coverage is the distance between the
+        # intersection points
+        point_1 = self.doorway.vector1 + t1 * V
+        point_2 = self.doorway.vector1 + t2 * V
+
+        # Case 6: One of the solutions for t is not between 0 and 1 meaning its a hypothetical intersection
+        # if the doorway was extended to the other side of the circle. Therefore replace it with
+        # the doorway coordinate that is inside the smoke.
+        if 0 <= t1 <= 1 and not 0 <= t2 <= 1:
+            point_2 = self.doorway.vector1 if d1_in_smoke else self.doorway.vector2
+        elif not 0 <= t1 <= 1 and 0 <= t2 <= 1:
+            point_1 = self.doorway.vector1 if d1_in_smoke else self.doorway.vector2
+
+        # Calculate the coverage in units for the smoke and percentage
+        coverage_in_units = point_1.distance_to(point_2)
+        self.coverage = (coverage_in_units /
+                         self.doorway.length) * 100
+
+        logging.debug("Points of intersection:")
+        logging.debug(f"Point 1: {point_1} t1: {t1}")
+        logging.debug(f"Point 2: {point_2} t2: {t2}")
+        logging.debug(f"Coverage in units: {coverage_in_units}")
+
+        logging.info(f"Doorway partially covered - {self.coverage=}")
 
 
 class Doorway():
@@ -130,6 +144,7 @@ class Doorway():
         self.name = name
         self.z = z
 
+        # Adds (or minuses) half a player width to each of the doorway coordinates
         dx = ((x2 - x1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
             (PLAYER_WIDTH / 2)
         dy = ((y2 - y1) / (math.sqrt((x2 - x1)**2 + (y2 - y1)**2))) * \
@@ -138,23 +153,26 @@ class Doorway():
         self.vector2 = Vector2(x2+dx, y2+dy)
 
         self.midpoint = Vector2((x1 + x2) / 2, (y1 + y2) / 2)
-
         self.target_radius = int(config["Data"]["detection_radius_units"])
         self.z_tolerance = int(config["Data"]["height_tolerance_units"])
         self.smokes = []
-        self.length = self.vector1.distance_to(self.vector2)
-
         self.length = self.vector1.distance_to(self.vector2)
 
     def __str__(self):
         return f"Doorway({self.name.capitalize()})"
 
     def in_game_draw_command(self):
+        """Generates a command that can be passed into the CS:GO developer console to draw two crosses in-game to show
+        the doorway location.
+        """
         coord1_str = f"{self.vector1.x} {self.vector1.y} {self.z}"
         coord2_str = f"{self.vector2.x} {self.vector2.y} {self.z}"
         return f"drawline {coord1_str} {coord2_str}"
 
     def smoke_in_target_range(self, smoke):
+        """Checks if a smoke is within the target radius of the doorway. Target radius and z tolerance values are
+        provided in the configuration file.
+        """
         logging.debug(f"Checking if {smoke} in range of {self.name}")
         if point_within_circle(smoke.vector, self.midpoint, self.target_radius):
             if smoke.z >= self.z - self.z_tolerance and smoke.z <= self.z + self.z_tolerance:
@@ -168,6 +186,8 @@ class Doorway():
         return False
 
     def coverage_stats(self):
+        """Provides basic statistics about the coverage for the smokes assigned to the doorway.
+        """
         coverage_vals = [smoke.coverage for smoke in self.smokes]
 
         return {"min": np.min(coverage_vals),
@@ -177,6 +197,8 @@ class Doorway():
 
 
 def load_doorway_data():
+    """Loads the doorway information from the json file and converts them to Doorway objects.
+    """
     entrances_file = open(DOORWAY_FILE)
     entrances_data = json.load(entrances_file)
     doorways = []
@@ -193,6 +215,8 @@ def load_doorway_data():
 
 
 def load_smoke_data():
+    """Loads the smoke information from the json file and converts them to Smoke objects.
+    """
     with open(DATASET_FILE, 'r') as f:
         dataset = json.load(f)
 
@@ -213,6 +237,10 @@ def load_smoke_data():
 
 
 def assign_doorways(smokes, doorways):
+    """Iterates through all of the smokes, assigns them to their doorway (or discards them), 
+    then calculates the coverage.
+
+    """
     logging.info("Assigning Doorways...")
     valid_smokes = []
     for smoke in smokes:

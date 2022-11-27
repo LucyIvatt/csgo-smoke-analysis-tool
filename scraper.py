@@ -15,6 +15,7 @@ HLTV_BASE_URL = "https://www.hltv.org/"
 config = ConfigParser()
 config.read("data\\config.ini")
 
+# TODO: change to use os.path.join
 DEMO_DIR = config["Data"]["demo_directory"]
 
 ARCHIVE_DIR = DEMO_DIR + "\\archives"
