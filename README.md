@@ -14,7 +14,7 @@ Python script utilising Selenium WebDriver (Browser automation)​ - Downloads e
 4. Extracts downloaded demo files​
 5. Extracts all demos into the same directory. Any that are not mirage are deleted. _Some other maps might be in there as if the match was a best of three and one of the maps was mirage, it will also download the 1-2 other maps that were played.​_
 
-**Logging Example: **
+**Logging Example:**
 
 <img width="698" alt="image" src="https://github.com/user-attachments/assets/9e530f72-f64d-4c95-94ab-b8920a024a31">
 
