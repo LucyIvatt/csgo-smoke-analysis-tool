@@ -5,10 +5,6 @@ Consists of 4 parts - Web scraping, parsing, analysis and visualisations​.
 - Python logging module used throughout the scripts​
 - Configuration file for file locations, visualisation colours etc.​
 
-## Limitations
-- Restricted only to mirage to reduce effort required for manual collection of doorways / common locations
-- Inaccurate for one-way smokes
-
 # Web Scraping
 Python script utilising Selenium WebDriver (Browser automation)​ - Downloads every demo file from HLTV from 29/01/2020​
 
@@ -96,6 +92,13 @@ Using the coverage statistics determined earlier, creates a set of different dia
 ### Player Averages
 - Possible application for training / focusing on less accurate smoke locations
 ![BlameFPlayerViswpic](https://github.com/user-attachments/assets/5f7667bc-440a-4b14-8ae4-889c36a00c1d)
+
+# Limitations
+- Restricted only to `de_mirage` to reduce effort required for manual collection of doorways / common locations, could be extended to include more.
+- Out of date now CS2 has been released with new smoke grenades
+- Inaccurate for one-way smokes where players are not aiming for exactly 100% coverage
+- Only 60.8% of the dataset were thrown in the common locations, further work would be to look into possibilities to classify these too. 
+
 
 
 
